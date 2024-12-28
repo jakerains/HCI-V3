@@ -1,0 +1,14 @@
+PROJECT_CONTEXT: Ship Helm Commands Simulation
+CODING_STANDARDS: 
+  - Python for logic
+  - HTML/CSS for UI display
+  - Consistent function and variable naming conventions
+ARCHITECTURE_RULES:
+  - Modular structure for command parsing and UI updates
+  - Separation of concerns for logic and display
+COMMON_PATTERNS:
+  - Command parsing and validation
+  - Real-time UI updates with JSON payloads
+DOCUMENTATION_REQUIREMENTS:
+  - Comprehensive comments for each function
+  - Inline examples for expected command inputs and outputs
