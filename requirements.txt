@@ -1,7 +1,0 @@
-gradio>=4.19.2
-groq>=0.4.2
-elevenlabs>=1.50.3
-python-dotenv>=1.0.1
-numpy>=1.24.0
-soundfile>=0.12.1
-websockets
