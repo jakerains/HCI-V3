@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Providers } from "./providers";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -21,12 +22,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="min-h-screen bg-gray-950 text-gray-50">
-        <Providers>
+      <body className="min-h-screen">
+        <ThemeProvider>
+          <Toaster />
           <main className="container mx-auto py-8">
             {children}
           </main>
-        </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );
