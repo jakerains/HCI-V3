@@ -1,12 +1,15 @@
-import React from 'react'
+'use client'
+
+import { useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 
 interface CompassDisplayProps {
-  course: number
+  course?: number
 }
 
-export default function CompassDisplay({ course }: CompassDisplayProps) {
+export default function CompassDisplay({ course = 0 }: CompassDisplayProps) {
   const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   
   // Cardinal and ordinal directions
   const directions = [
@@ -25,6 +28,14 @@ export default function CompassDisplay({ course }: CompassDisplayProps) {
 
   // Normalize course to 0-360 range
   const normalizedCourse = ((course % 360) + 360) % 360
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return null // Prevent hydration mismatch by not rendering anything on server
+  }
 
   return (
     <div className="relative w-full aspect-square max-w-[240px] mx-auto">
@@ -86,7 +97,7 @@ export default function CompassDisplay({ course }: CompassDisplayProps) {
         {/* Rotating compass card */}
         <div
           className="absolute inset-6 transition-transform duration-500 ease-out"
-          style={{ transform: `rotate(-${normalizedCourse}deg)` }}
+          style={{ transform: mounted ? `rotate(-${normalizedCourse}deg)` : 'rotate(0deg)' }}
         >
           {/* Compass card with degree markings */}
           <div className="absolute inset-0 rounded-full">
