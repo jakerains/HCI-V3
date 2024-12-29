@@ -20,12 +20,11 @@ export default function VoiceTest() {
   const [settings, setSettings] = useState({
     stability: 0.5,
     similarity_boost: 0.75,
-    style: 0.0,
     use_speaker_boost: true,
   })
 
   const [voicePrompt, setVoicePrompt] = useState(
-    "[Voice: You are a professional naval helmsman. Speak with a clear, confident, and authoritative tone. Your responses should be crisp and precise, with proper naval inflection and timing.]"
+    "[Voice: You are a professional naval helmsman with years of experience. Speak with a clear, confident, and authoritative tone that reflects maritime discipline. Your responses should be crisp, precise, and delivered with proper naval inflection and timing. Maintain a steady, measured pace that conveys both competence and respect for naval tradition.]"
   )
   
   const [customText, setCustomText] = useState("")
@@ -47,7 +46,6 @@ export default function VoiceTest() {
         voice_settings_overrides: usePrompt ? {
           stability: settings.stability,
           similarity_boost: settings.similarity_boost,
-          style: settings.style,
           use_speaker_boost: settings.use_speaker_boost,
           speaking_rate: 0.95,
           system_prompt: voicePrompt
@@ -124,18 +122,6 @@ export default function VoiceTest() {
                 max={1}
                 step={0.05}
                 onValueChange={([value]) => setSettings(s => ({ ...s, similarity_boost: value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Style ({settings.style})
-              </label>
-              <Slider 
-                value={[settings.style]}
-                min={0}
-                max={1}
-                step={0.05}
-                onValueChange={([value]) => setSettings(s => ({ ...s, style: value }))}
               />
             </div>
             <div className="flex items-center space-x-2">

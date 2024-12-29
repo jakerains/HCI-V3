@@ -35,8 +35,8 @@ export type Theme = {
   };
 }
 
-// Default Naval Dark theme
-const defaultTheme: Theme = {
+// Naval Dark theme
+const darkTheme: Theme = {
   name: "Naval Dark",
   colors: {
     background: "bg-gray-950",
@@ -73,11 +73,11 @@ const defaultTheme: Theme = {
   }
 }
 
-// Light theme variant
+// Naval Light theme
 const lightTheme: Theme = {
   name: "Naval Light",
   colors: {
-    background: "bg-slate-100",
+    background: "bg-[hsl(300,0%,88%)]",
     cardBackground: "bg-white",
     cardBorder: "border-slate-200",
   },
@@ -96,8 +96,8 @@ const lightTheme: Theme = {
   },
   indicators: {
     rudder: "bg-blue-700",
-    speed: "text-emerald-700",
-    course: "text-amber-700"
+    speed: "text-emerald-800",
+    course: "text-amber-800"
   },
   compass: {
     background: "bg-slate-100",
@@ -111,9 +111,9 @@ const lightTheme: Theme = {
   }
 }
 
-export const themes: Record<string, Theme> = {
-  dark: defaultTheme,
+export const themes = {
+  dark: darkTheme,
   light: lightTheme
-}
+} as const
 
-export const DEFAULT_THEME = defaultTheme 
+export const DEFAULT_THEME = darkTheme 

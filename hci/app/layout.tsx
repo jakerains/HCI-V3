@@ -22,10 +22,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      <body className="min-h-screen">
+      <body className="h-screen flex">
         <ThemeProvider>
           <Toaster />
-          <main className="container mx-auto py-8">
+          <main className="flex-1 flex items-center justify-center">
             {children}
           </main>
         </ThemeProvider>
