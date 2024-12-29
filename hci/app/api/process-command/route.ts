@@ -56,6 +56,9 @@ function formatNavalCourse(course: number): string {
     .join(' ')
 }
 
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const GROQ_MODEL_ID = process.env.GROQ_MODEL_ID
+
 export async function POST(request: Request) {
   try {
     // Initialize Groq client inside the handler
@@ -67,8 +70,16 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!process.env.GROQ_MODEL_ID) {
+      console.error('Missing GROQ_MODEL_ID environment variable')
+      return NextResponse.json(
+        { error: 'Missing GROQ_MODEL_ID environment variable' },
+        { status: 500 }
+      )
+    }
+
     const client = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
+      apiKey: GROQ_API_KEY,
     })
 
     let body
@@ -151,9 +162,10 @@ Return only the corrected command text with no explanation.`
             content: command 
           }
         ],
-        model: 'llama-3.3-70b-specdec',
+        model: process.env.GROQ_MODEL_ID,
         max_tokens: 100,
         temperature: 0.1,
+        top_p: 0.9
       })
 
       if (!correctionCompletion.choices?.[0]?.message?.content) {
@@ -195,11 +207,24 @@ Required JSON format:
     "course": number | null,  // 0-359
     "speed": number | null    // -100 to +110
   },
-  "response": string         // Naval style response
+  "helmAcknowledgment": string,  // The helm's "aye aye" response
+  "statusReport": string         // Brief status update of what changed
 }
 
-Example for your exact command:
-{"stateUpdates":{"rudder":-20,"speed":90,"course":180},"response":"left 20 degrees rudder, all ahead full, steady course one eight zero, aye aye"}
+Example responses:
+For "Helm left 20 degrees rudder, all ahead full, steady on course 180":
+{
+  "stateUpdates": {"rudder":-20,"speed":90,"course":180},
+  "helmAcknowledgment": "left 20 degrees rudder, all ahead full, steady course one eight zero, aye aye",
+  "statusReport": "Rudder shifting left to 20 degrees, increasing speed to full ahead, coming to new course 180"
+}
+
+For "Helm rudder amidships":
+{
+  "stateUpdates": {"rudder":0,"speed":null,"course":null},
+  "helmAcknowledgment": "rudder amidships, aye aye",
+  "statusReport": "Centering rudder to zero degrees"
+}
 
 RETURN ONLY THE JSON OBJECT. NO OTHER TEXT.` 
           },
@@ -208,9 +233,10 @@ RETURN ONLY THE JSON OBJECT. NO OTHER TEXT.`
             content: correctedCommand 
           }
         ],
-        model: 'llama-3.3-70b-specdec',
+        model: process.env.GROQ_MODEL_ID,
         max_tokens: 250,
         temperature: 0.1,
+        top_p: 0.9
       })
 
       if (!interpretationCompletion.choices?.[0]?.message?.content) {
@@ -239,7 +265,7 @@ RETURN ONLY THE JSON OBJECT. NO OTHER TEXT.`
       console.log('Parsed interpretation:', interpretation)
 
       // Validate the interpretation structure
-      if (!interpretation.stateUpdates || !interpretation.response) {
+      if (!interpretation.stateUpdates || !interpretation.helmAcknowledgment || !interpretation.statusReport) {
         console.error('Invalid interpretation structure:', interpretation)
         throw new Error('Invalid interpretation structure')
       }
@@ -247,7 +273,7 @@ RETURN ONLY THE JSON OBJECT. NO OTHER TEXT.`
       // Format the course number in the response if it exists
       if (interpretation.stateUpdates?.course !== null) {
         const course = interpretation.stateUpdates.course
-        interpretation.response = interpretation.response.replace(
+        interpretation.helmAcknowledgment = interpretation.helmAcknowledgment.replace(
           /course (\d{3})/,
           `course ${formatNavalCourse(course)}`
         )

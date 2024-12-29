@@ -1,5 +1,6 @@
 import React from 'react'
 import { Card, CardContent } from '@/components/ui/card'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface ShipStatusProps {
   rudder: number
@@ -8,35 +9,47 @@ interface ShipStatusProps {
 }
 
 export default function ShipStatus({ rudder, course, speed }: ShipStatusProps) {
+  const { theme } = useTheme()
+  
   return (
     <div className="grid grid-cols-3 gap-4">
-      <Card className="bg-gray-700 border-gray-600">
-        <CardContent className="pt-6">
-          <h3 className="text-lg font-semibold mb-2 text-center">Rudder</h3>
-          <p className="text-2xl font-bold text-center">{rudder}°</p>
-          <div className="mt-2 h-4 bg-gray-600 rounded-full overflow-hidden">
+      <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder} overflow-hidden`}>
+        <CardContent className="p-4 relative">
+          <div className={`absolute inset-x-0 top-0 h-1 ${theme.indicators.rudder} opacity-75`} />
+          <h3 className={`text-sm font-medium mb-1 ${theme.text.muted}`}>Rudder</h3>
+          <p className={`text-2xl font-bold ${theme.text.primary}`}>{rudder}°</p>
+          <div className={`mt-3 h-2 ${theme.compass.background} rounded-full overflow-hidden`}>
             <div 
-              className="h-full bg-blue-500" 
-              style={{ width: `${Math.abs(rudder) / 0.35}%`, marginLeft: rudder < 0 ? '0' : 'auto', marginRight: rudder > 0 ? '0' : 'auto' }}
-            ></div>
+              className={`h-full ${theme.indicators.rudder} transition-all duration-300`}
+              style={{ 
+                width: `${Math.abs(rudder) / 0.35}%`, 
+                marginLeft: rudder < 0 ? '0' : 'auto', 
+                marginRight: rudder > 0 ? '0' : 'auto' 
+              }}
+            />
           </div>
         </CardContent>
       </Card>
-      <Card className="bg-gray-700 border-gray-600">
-        <CardContent className="pt-6">
-          <h3 className="text-lg font-semibold mb-2 text-center">Course</h3>
-          <p className="text-2xl font-bold text-center">{course}°</p>
+
+      <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder} overflow-hidden`}>
+        <CardContent className="p-4 relative">
+          <div className={`absolute inset-x-0 top-0 h-1 ${theme.indicators.course} opacity-75`} />
+          <h3 className={`text-sm font-medium mb-1 ${theme.text.muted}`}>Course</h3>
+          <p className={`text-2xl font-bold ${theme.text.primary}`}>{course}°</p>
+          <div className="mt-3 h-2 opacity-0" />
         </CardContent>
       </Card>
-      <Card className="bg-gray-700 border-gray-600">
-        <CardContent className="pt-6">
-          <h3 className="text-lg font-semibold mb-2 text-center">Speed</h3>
-          <p className="text-2xl font-bold text-center">{speed} knots</p>
-          <div className="mt-2 h-4 bg-gray-600 rounded-full overflow-hidden">
+
+      <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder} overflow-hidden`}>
+        <CardContent className="p-4 relative">
+          <div className={`absolute inset-x-0 top-0 h-1 ${theme.indicators.speed} opacity-75`} />
+          <h3 className={`text-sm font-medium mb-1 ${theme.text.muted}`}>Speed</h3>
+          <p className={`text-2xl font-bold ${theme.text.primary}`}>{speed} knots</p>
+          <div className={`mt-3 h-2 ${theme.compass.background} rounded-full overflow-hidden`}>
             <div 
-              className="h-full bg-green-500" 
+              className={`h-full ${theme.indicators.speed} transition-all duration-300`}
               style={{ width: `${speed}%` }}
-            ></div>
+            />
           </div>
         </CardContent>
       </Card>

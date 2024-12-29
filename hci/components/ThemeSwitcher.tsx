@@ -1,45 +1,27 @@
 import { Button } from "@/components/ui/button"
-import { themes } from "@/lib/themes"
 import { useTheme } from "@/contexts/ThemeContext"
-import { Monitor, Moon, Sun, RotateCcw } from "lucide-react"
+import { Moon, Sun } from "lucide-react"
 
 export function ThemeSwitcher() {
-  const { theme, setTheme, isDefaultTheme, resetToDefault } = useTheme()
+  const { theme, setTheme } = useTheme()
 
   const toggleTheme = () => {
-    const currentThemeName = Object.keys(themes).find(key => themes[key].name === theme.name)
-    const themeNames = Object.keys(themes)
-    const currentIndex = themeNames.indexOf(currentThemeName || 'dark')
-    const nextIndex = (currentIndex + 1) % themeNames.length
-    setTheme(themeNames[nextIndex])
+    setTheme(theme.name === "Naval Dark" ? "light" : "dark")
   }
 
   return (
-    <div className="fixed top-4 right-4 flex gap-2">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleTheme}
-        className="w-9 h-9 rounded-full"
-        title={`Current: ${theme.name}`}
-      >
-        {theme.name === "Naval Dark" ? (
-          <Sun className="h-4 w-4" />
-        ) : (
-          <Moon className="h-4 w-4" />
-        )}
-      </Button>
-      {!isDefaultTheme && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={resetToDefault}
-          className="w-9 h-9 rounded-full"
-          title="Reset to Default Theme"
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggleTheme}
+      className="fixed bottom-4 right-4 w-8 h-8 rounded-full opacity-50 hover:opacity-100 transition-opacity"
+      title={theme.name === "Naval Dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+    >
+      {theme.name === "Naval Dark" ? (
+        <Sun className="h-4 w-4" />
+      ) : (
+        <Moon className="h-4 w-4" />
       )}
-    </div>
+    </Button>
   )
 } 
