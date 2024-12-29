@@ -28,7 +28,7 @@ wss.on('connection', (ws) => {
       console.error('Error processing audio:', error)
     }
   })
-  
+
   ws.on('close', () => {
     console.log('Client disconnected')
     recognizer.free()
