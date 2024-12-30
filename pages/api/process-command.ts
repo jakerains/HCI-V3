@@ -17,7 +17,7 @@ function formatNavalNumber(num: number): string {
         case '6': return 'six'
         case '7': return 'seven'
         case '8': return 'eight'
-        case '9': return 'nine'
+        case '9': return 'niner'
         default: return digit
       }
     })
@@ -27,10 +27,13 @@ function formatNavalNumber(num: number): string {
 // Function to format the command response in naval style
 function formatNavalResponse(command: string): string {
   // Format course changes (e.g., "course 180" -> "course one eight zero")
-  return command.replace(/\b(\d+)\b/g, (match) => {
-    const num = parseInt(match)
-    return formatNavalNumber(num)
-  })
+  // Also handle standalone "nine" or "9" -> "niner"
+  return command
+    .replace(/\b(\d+)\b/g, (match) => {
+      const num = parseInt(match)
+      return formatNavalNumber(num)
+    })
+    .replace(/\b(nine|9)\b/g, 'niner')
 }
 
 export default async function handler(
@@ -90,8 +93,7 @@ Example responses:
     "speed": null,
     "course": null
   },
-  "statusReport": "Turning rudder one five degrees to starboard"
-}`
+  "statusReport": "Turning rudder one five degrees to starboard"}`
         },
         {
           role: 'user',
