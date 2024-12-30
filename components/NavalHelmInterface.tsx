@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Mic, MicOff, Volume2, VolumeX, ArrowUp, ArrowDown, Pause, Gauge, Anchor, Ship, Radio, History, Navigation2, Compass, Settings } from 'lucide-react'
+import { Mic, MicOff, Volume2, VolumeX, ArrowUp, ArrowDown, Pause, Gauge, Anchor, Ship, Radio, History, Navigation2, Compass, Settings, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition'
@@ -75,6 +75,20 @@ const ELEVENLABS_API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
 const ELEVENLABS_VOICE_ID = process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID
 const ELEVENLABS_MODEL_ID = process.env.NEXT_PUBLIC_ELEVENLABS_MODEL_ID
 
+// Add this constant with the example commands
+const EXAMPLE_COMMANDS = [
+  "Helm, right 15 degrees rudder, steady on course zero niner zero",
+  "Helm, all ahead two-thirds, come left to heading one eight zero",
+  "Helm, rudder amidships, all ahead full, steady as she goes",
+  "Helm, left standard rudder, reduce speed to one-third, steady on course two seven zero",
+  "Helm, all stop, come right to heading three six zero",
+  "Helm, back emergency full, steady as she goes",
+  "Helm, right 10 degrees rudder, all ahead slow, steady on course zero four five",
+  "Helm, left 30 degrees rudder, steady on course one four five",
+  "Helm, all astern half, maintain heading two one zero",
+  "Helm, no more than 10 degrees rudder, hold course at zero niner zero"
+]
+
 export default function NavalHelmInterface() {
   const { theme } = useTheme()
   const [shipState, setShipState] = useState({
@@ -89,6 +103,7 @@ export default function NavalHelmInterface() {
   const [screenResponse, setScreenResponse] = useState('')
   const [processingCommand, setProcessingCommand] = useState(false)
   const [missingKeys, setMissingKeys] = useState({ groq: false, elevenLabs: false })
+  const [showExamples, setShowExamples] = useState(false)
 
   const { 
     isListening, 
@@ -636,6 +651,39 @@ export default function NavalHelmInterface() {
       {/* Version number */}
       <div className={`text-[10px] ${theme.text.muted} text-center mt-4`}>
         v0.3.0
+      </div>
+
+      <div className="mt-6">
+        <button
+          onClick={() => setShowExamples(!showExamples)}
+          className={`w-full flex items-center justify-between p-4 rounded-lg ${theme.colors.cardBackground} ${theme.colors.cardBorder} ${theme.text.primary}`}
+        >
+          <div className="flex items-center gap-2">
+            <HelpCircle className="h-5 w-5" />
+            <span className="font-medium">Example Commands</span>
+          </div>
+          {showExamples ? (
+            <ChevronUp className="h-5 w-5" />
+          ) : (
+            <ChevronDown className="h-5 w-5" />
+          )}
+        </button>
+        
+        {showExamples && (
+          <div className={`mt-2 p-4 rounded-lg ${theme.colors.cardBackground} ${theme.colors.cardBorder}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {EXAMPLE_COMMANDS.map((command, index) => (
+                <button
+                  key={index}
+                  onClick={() => processCommand(command)}
+                  className={`text-left p-3 rounded ${theme.colors.cardBorder} hover:bg-opacity-50 hover:bg-gray-500 transition-colors duration-200`}
+                >
+                  <p className={`text-sm ${theme.text.primary}`}>{command}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
