@@ -104,31 +104,23 @@ export default function CompassDisplay({ course = 0 }: CompassDisplayProps) {
         >
           {/* Compass card with degree markings */}
           <div className="absolute inset-0 rounded-full">
-            {/* North pointer with triangle */}
-            <div className="absolute inset-x-0 top-0 flex justify-center">
-              <div className="relative flex flex-col items-center">
-                {/* Triangle pointer */}
-                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[16px] border-l-transparent border-r-transparent border-b-amber-500/90" />
-                {/* Main needle */}
-                <div className={`w-0.5 h-[40%] bg-gradient-to-b from-amber-500/90 to-amber-500/40 rounded-full -mt-1`} />
-                {/* Dynamic bar with gradient and glow */}
-                <div className="absolute top-[50%] left-1/2 -translate-x-1/2 flex flex-col items-center">
-                  <div className="w-[2px] h-[100px] bg-gradient-to-b from-amber-500/70 to-amber-500/20 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.3)]" />
+            {/* North pointer with bar */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative w-full">
+                {/* Horizontal bar */}
+                <div className="relative h-[2px] bg-gradient-to-r from-amber-500/20 via-amber-500/80 to-amber-500/20">
+                  {/* North triangle - positioned at end of bar and rotated */}
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90">
+                    <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[14px] border-l-transparent border-r-transparent border-b-amber-500/80" />
+                  </div>
                 </div>
               </div>
             </div>
-            {/* South pointer */}
-            <div className="absolute inset-x-0 bottom-0 flex justify-center">
-              <div className="w-0.5 h-[40%] bg-gradient-to-t from-gray-300/80 to-white/80 rounded-full" />
-            </div>
-            
-            {/* East-West line */}
-            <div className="absolute inset-y-0 left-1/2 flex justify-center">
-              <div className={`h-full w-[1px] ${theme.compass.markers} opacity-40`} />
-            </div>
 
             {/* Center hub */}
-            <div className={`absolute inset-[45%] rounded-full ${theme.compass.background} shadow-lg border ${theme.colors.cardBorder}`} />
+            <div className={`absolute inset-[45%] rounded-full ${theme.compass.background} shadow-md border ${theme.colors.cardBorder}`}>
+              <div className="absolute inset-[15%] rounded-full bg-gradient-to-br from-gray-400/5 to-gray-400/20" />
+            </div>
           </div>
         </div>
 
