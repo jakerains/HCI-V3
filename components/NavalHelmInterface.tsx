@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { Mic, MicOff, Volume2, VolumeX, ArrowUp, ArrowDown, Pause, Gauge, Anchor, Ship, Radio, History, Navigation2, Compass } from 'lucide-react'
+import { Mic, MicOff, Volume2, VolumeX, ArrowUp, ArrowDown, Pause, Gauge, Anchor, Ship, Radio, History, Navigation2, Compass, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition'
@@ -14,6 +14,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import Link from 'next/link'
 import { commandStore } from '@/lib/commandStore'
+import { checkApiKeys } from '@/lib/api-keys'
 
 // Naval command patterns and configurations
 const NAVAL_PATTERNS = {
@@ -87,6 +88,7 @@ export default function NavalHelmInterface() {
   const [commandLog, setCommandLog] = useState<string[]>([])
   const [screenResponse, setScreenResponse] = useState('')
   const [processingCommand, setProcessingCommand] = useState(false)
+  const [missingKeys, setMissingKeys] = useState({ groq: false, elevenLabs: false })
 
   const { 
     isListening, 
@@ -97,6 +99,20 @@ export default function NavalHelmInterface() {
     setTranscript 
   } = useVoiceRecognition()
   const { toast } = useToast()
+
+  useEffect(() => {
+    const checkKeys = () => {
+      const keyStatus = checkApiKeys()
+      setMissingKeys({
+        groq: !keyStatus.groq,
+        elevenLabs: !keyStatus.elevenLabs
+      })
+    }
+    
+    checkKeys()
+    window.addEventListener('storage', checkKeys)
+    return () => window.removeEventListener('storage', checkKeys)
+  }, [])
 
   const playAudioResponse = async (text: string) => {
     if (isMuted) return
@@ -279,11 +295,40 @@ export default function NavalHelmInterface() {
 
   return (
     <div className={`w-full max-w-6xl mx-6 my-6 p-4 sm:p-6 ${theme.name === "Naval Dark" ? "bg-[hsl(222,23%,10%)]" : "bg-[hsl(300,0%,88%)]"} ${theme.text.primary} rounded-lg shadow-2xl relative`}>
-      <ThemeSwitcher />
-      <h1 className={`${theme.fonts.display} text-2xl sm:text-3xl font-bold text-center mb-4 sm:mb-6 ${theme.text.primary}`}>
-        Naval Ship's Helm Command Interface
-      </h1>
-      
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Naval Helm Interface</h1>
+        <div className="flex items-center gap-2">
+          <ThemeSwitcher />
+          <Link href="/settings">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="relative"
+            >
+              <Settings className="h-5 w-5" />
+              {(missingKeys.groq || missingKeys.elevenLabs) && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full" />
+              )}
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {(missingKeys.groq || missingKeys.elevenLabs) && (
+        <div className="mb-4 p-4 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg">
+          <p className="text-sm">
+            {missingKeys.groq && missingKeys.elevenLabs ? (
+              <>Missing Groq and ElevenLabs API keys. </>
+            ) : missingKeys.groq ? (
+              <>Missing Groq API key. </>
+            ) : (
+              <>Missing ElevenLabs API key. </>
+            )}
+            <Link href="/settings" className="underline">Configure in settings</Link>
+          </p>
+        </div>
+      )}
+
       {/* Main Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         {/* Ship Status - Left Column */}
