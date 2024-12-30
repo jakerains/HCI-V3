@@ -281,7 +281,7 @@ export default function NavalHelmInterface() {
     <div className={`w-full max-w-6xl mx-6 my-6 p-4 sm:p-6 ${theme.name === "Naval Dark" ? "bg-[hsl(222,23%,10%)]" : "bg-[hsl(300,0%,88%)]"} ${theme.text.primary} rounded-lg shadow-2xl relative`}>
       <ThemeSwitcher />
       <h1 className={`${theme.fonts.display} text-2xl sm:text-3xl font-bold text-center mb-4 sm:mb-6 ${theme.text.primary}`}>
-        Naval Ship's Helm Command Interface (Secure)
+        Naval Ship's Helm Command Interface
       </h1>
       
       {/* Main Grid Layout */}
