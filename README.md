@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="./public/logo.png" alt="HCI-V3 Logo" width="200" height="auto" />
+<img src="./public/logo.png" alt="HCI-V3 Logo" width="400" height="auto" />
 
 [![Next.js](https://img.shields.io/badge/Next.js-13.5-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
