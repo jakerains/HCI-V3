@@ -230,11 +230,15 @@ export default function NavalHelmInterface() {
     try {
       console.log('Processing transcript:', command)
       
+      // Get the API key
+      const geminiKey = localStorage.getItem('geminiApiKey') || process.env.NEXT_PUBLIC_GEMINI_API_KEY
+
       // Send command to LLM endpoint
       const response = await fetch('/api/process-command', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-gemini-key': geminiKey || '',
         },
         body: JSON.stringify({
           command,

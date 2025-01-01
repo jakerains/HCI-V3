@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { cookies } from 'next/headers'
 
 // Naval command patterns and configurations
 const NAVAL_PATTERNS = {
@@ -58,15 +59,17 @@ function formatNavalCourse(course: number): string {
     .join(' ')
 }
 
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY
 const GEMINI_MODEL = "gemini-1.5-flash"
 
 export async function POST(request: Request) {
   try {
+    // Get API key from request headers (sent from client) or environment variable
+    const GEMINI_API_KEY = request.headers.get('x-gemini-key') || process.env.NEXT_PUBLIC_GEMINI_API_KEY
+    
     if (!GEMINI_API_KEY) {
-      console.error('Missing NEXT_PUBLIC_GEMINI_API_KEY environment variable')
+      console.error('Missing Gemini API key')
       return NextResponse.json(
-        { error: 'Missing NEXT_PUBLIC_GEMINI_API_KEY environment variable. Please set this in your .env.local file.' },
+        { error: 'Missing Gemini API key. Please configure it in settings or .env.local file.' },
         { status: 500 }
       )
     }
@@ -160,7 +163,7 @@ Command to interpret: ${correctedCommand}`
 
       const interpretationText = interpretationResult.response.text().trim()
       console.log('Raw interpretation:', interpretationText)
-      
+
       // Remove markdown code block if present
       const jsonText = interpretationText.replace(/^```json\n|\n```$/g, '').trim()
       console.log('Cleaned JSON:', jsonText)
