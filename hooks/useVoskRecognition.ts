@@ -156,6 +156,9 @@ export function useVoskRecognition() {
       
       ws.onopen = () => {
         console.log('Connected to Vosk server')
+        // Send the selected model to the server
+        const activeModel = localStorage.getItem('activeVoskModel') || 'vosk-model-small-en-us-0.15'
+        ws.send(JSON.stringify({ model: activeModel }))
         setIsListening(true)
         setSocket(ws)
       }

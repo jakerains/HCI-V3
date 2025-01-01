@@ -17,22 +17,29 @@ FRAME_RATE = 16000
 CHANNELS = 1
 CHUNK_SIZE = 8000
 
-if not os.path.exists("model"):
-    print("Please download the model from https://alphacephei.com/vosk/models and unpack as 'model' in the current folder.")
-    sys.exit(1)
+# Models directory
+MODELS_DIR = "models"
 
-# Initialize Vosk model
-model = Model("model")
-rec = KaldiRecognizer(model, FRAME_RATE)
+# Dictionary to store model instances
+models = {}
 
-# Initialize PyAudio
-p = pyaudio.PyAudio()
-stream = None
+def get_model(model_name):
+    """Get or create a model instance."""
+    if model_name not in models:
+        model_path = os.path.join(MODELS_DIR, model_name)
+        if not os.path.exists(model_path):
+            raise ValueError(f"Model {model_name} not found in {MODELS_DIR}")
+        models[model_name] = Model(model_path)
+    return models[model_name]
 
-async def process_audio(websocket):
-    global stream
+async def process_audio(websocket, model_name):
+    global p
     
     try:
+        # Get the appropriate model
+        model = get_model(model_name)
+        rec = KaldiRecognizer(model, FRAME_RATE)
+        
         # Open audio stream
         stream = p.open(
             format=pyaudio.paFloat32,
@@ -42,7 +49,7 @@ async def process_audio(websocket):
             frames_per_buffer=CHUNK_SIZE
         )
         
-        logging.info("Started listening")
+        logging.info(f"Started listening with model: {model_name}")
         
         while True:
             data = stream.read(CHUNK_SIZE, exception_on_overflow=False)
@@ -69,18 +76,36 @@ async def process_audio(websocket):
 async def websocket_server(websocket, path):
     try:
         logging.info("Client connected")
-        await process_audio(websocket)
+        
+        # Wait for the initial message with model selection
+        message = await websocket.recv()
+        try:
+            data = json.loads(message)
+            model_name = data.get('model')
+            if not model_name:
+                raise ValueError("No model specified")
+        except (json.JSONDecodeError, ValueError) as e:
+            logging.error(f"Invalid initial message: {str(e)}")
+            await websocket.close()
+            return
+            
+        await process_audio(websocket, model_name)
     except Exception as e:
         logging.error(f"Error in websocket_server: {str(e)}")
 
 async def main():
-    async with websockets.serve(websocket_server, "localhost", 2700):
-        await asyncio.Future()  # run forever
+    # Initialize PyAudio
+    global p
+    p = pyaudio.PyAudio()
+    
+    try:
+        async with websockets.serve(websocket_server, "localhost", 2700):
+            await asyncio.Future()  # run forever
+    finally:
+        p.terminate()
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("Server stopped by user")
-    finally:
-        p.terminate() 
+        logging.info("Server stopped by user") 

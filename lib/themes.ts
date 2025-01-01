@@ -39,15 +39,15 @@ export type Theme = {
 const darkTheme: Theme = {
   name: "Naval Dark",
   colors: {
-    background: "bg-gray-950",
-    cardBackground: "bg-gray-900",
-    cardBorder: "border-gray-800",
+    background: "bg-background",
+    cardBackground: "bg-card",
+    cardBorder: "border-border",
   },
   text: {
-    primary: "text-gray-50",
-    secondary: "text-gray-200",
-    accent: "text-blue-400",
-    muted: "text-gray-400"
+    primary: "text-foreground",
+    secondary: "text-muted-foreground",
+    accent: "text-accent-foreground",
+    muted: "text-muted"
   },
   status: {
     ready: "bg-blue-600 text-white",
@@ -62,10 +62,10 @@ const darkTheme: Theme = {
     course: "text-yellow-400"
   },
   compass: {
-    background: "bg-gray-800",
+    background: "bg-card",
     needle: "bg-red-500",
     markers: "text-blue-400",
-    text: "text-gray-100"
+    text: "text-foreground"
   },
   fonts: {
     display: "font-display",
@@ -77,15 +77,15 @@ const darkTheme: Theme = {
 const lightTheme: Theme = {
   name: "Naval Light",
   colors: {
-    background: "bg-[hsl(300,0%,88%)]",
-    cardBackground: "bg-white",
-    cardBorder: "border-slate-200",
+    background: "bg-background",
+    cardBackground: "bg-card",
+    cardBorder: "border-border",
   },
   text: {
-    primary: "text-slate-900",
-    secondary: "text-slate-700",
-    accent: "text-blue-700",
-    muted: "text-slate-500"
+    primary: "text-foreground",
+    secondary: "text-muted-foreground",
+    accent: "text-accent-foreground",
+    muted: "text-muted"
   },
   status: {
     ready: "bg-blue-600 text-white",
@@ -100,10 +100,10 @@ const lightTheme: Theme = {
     course: "text-amber-800"
   },
   compass: {
-    background: "bg-slate-100",
+    background: "bg-card",
     needle: "bg-red-700",
     markers: "text-blue-700",
-    text: "text-slate-900"
+    text: "text-foreground"
   },
   fonts: {
     display: "font-display",

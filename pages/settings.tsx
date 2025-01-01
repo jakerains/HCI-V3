@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { Progress } from '@/components/ui/progress'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import Link from 'next/link'
 import { ArrowLeft, Check, Download } from 'lucide-react'
 
@@ -39,14 +40,17 @@ export default function SettingsPage() {
   const [elevenLabsKey, setElevenLabsKey] = useState('')
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({})
   const [downloadedModels, setDownloadedModels] = useState<string[]>([])
+  const [activeModel, setActiveModel] = useState<string>('')
   const { toast } = useToast()
 
   useEffect(() => {
-    // Load saved API keys
+    // Load saved API keys and active model
     const savedGeminiKey = localStorage.getItem('geminiApiKey') || ''
     const savedElevenLabsKey = localStorage.getItem('elevenLabsApiKey') || ''
+    const savedActiveModel = localStorage.getItem('activeVoskModel') || ''
     setGeminiKey(savedGeminiKey)
     setElevenLabsKey(savedElevenLabsKey)
+    setActiveModel(savedActiveModel)
 
     // Check downloaded models
     fetchDownloadedModels()
@@ -58,6 +62,11 @@ export default function SettingsPage() {
       const data = await response.json()
       if (data.downloadedModels) {
         setDownloadedModels(data.downloadedModels)
+        // If no active model is set and we have downloaded models, set the first one as active
+        if (!localStorage.getItem('activeVoskModel') && data.downloadedModels.length > 0) {
+          setActiveModel(data.downloadedModels[0])
+          localStorage.setItem('activeVoskModel', data.downloadedModels[0])
+        }
       }
     } catch (error) {
       console.error('Error fetching downloaded models:', error)
@@ -70,6 +79,15 @@ export default function SettingsPage() {
     toast({
       title: "Settings Saved",
       description: "Your API keys have been saved successfully.",
+    })
+  }
+
+  const handleModelSelect = (modelId: string) => {
+    setActiveModel(modelId)
+    localStorage.setItem('activeVoskModel', modelId)
+    toast({
+      title: "Model Selected",
+      description: `${VOSK_MODELS[modelId].name} is now the active model.`,
     })
   }
 
@@ -191,46 +209,65 @@ export default function SettingsPage() {
           <CardDescription>Download and manage offline voice recognition models.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {Object.entries(VOSK_MODELS).map(([modelId, model]) => {
-            const isDownloaded = downloadedModels.includes(modelId)
-            const progress = downloadProgress[modelId]
-            const isDownloading = typeof progress === 'number'
+          <RadioGroup value={activeModel} onValueChange={handleModelSelect}>
+            {Object.entries(VOSK_MODELS).map(([modelId, model]) => {
+              const isDownloaded = downloadedModels.includes(modelId)
+              const progress = downloadProgress[modelId]
+              const isDownloading = typeof progress === 'number'
 
-            return (
-              <div key={modelId} className="p-4 border rounded-lg space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium">{model.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{model.description}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Size: {model.size}</p>
+              return (
+                <div key={modelId} className="p-4 border rounded-lg space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        {isDownloaded && (
+                          <RadioGroupItem 
+                            value={modelId} 
+                            id={modelId}
+                            disabled={!isDownloaded}
+                          />
+                        )}
+                        <div>
+                          <h3 className="font-medium">{model.name}</h3>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{model.description}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Size: {model.size}</p>
+                        </div>
+                      </div>
+                    </div>
+                    {!isDownloaded && !isDownloading && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleModelDownload(modelId)}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download
+                      </Button>
+                    )}
+                    {isDownloaded && !isDownloading && modelId !== activeModel && (
+                      <div className="flex items-center text-green-500">
+                        <Check className="mr-2 h-4 w-4" />
+                        <span className="text-sm">Installed</span>
+                      </div>
+                    )}
+                    {isDownloaded && !isDownloading && modelId === activeModel && (
+                      <div className="flex items-center text-blue-500">
+                        <Check className="mr-2 h-4 w-4" />
+                        <span className="text-sm">Active</span>
+                      </div>
+                    )}
                   </div>
-                  {!isDownloaded && !isDownloading && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleModelDownload(modelId)}
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download
-                    </Button>
-                  )}
-                  {isDownloaded && (
-                    <div className="flex items-center text-green-500">
-                      <Check className="mr-2 h-4 w-4" />
-                      <span className="text-sm">Installed</span>
+                  
+                  {isDownloading && (
+                    <div className="space-y-2">
+                      <Progress value={progress} className="w-full" />
+                      <p className="text-sm text-center">{progress}% - Downloading...</p>
                     </div>
                   )}
                 </div>
-                
-                {isDownloading && (
-                  <div className="space-y-2">
-                    <Progress value={progress} className="w-full" />
-                    <p className="text-sm text-center">{progress}% - Downloading...</p>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+              )
+            })}
+          </RadioGroup>
         </CardContent>
       </Card>
     </div>

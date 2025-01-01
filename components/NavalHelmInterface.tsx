@@ -132,11 +132,6 @@ export default function NavalHelmInterface() {
     return () => window.removeEventListener('storage', checkKeys)
   }, [])
 
-  useEffect(() => {
-    // Update body background color based on theme
-    document.body.style.backgroundColor = theme.name === "Naval Dark" ? "hsl(300,0%,9%)" : "white";
-  }, [theme.name]);
-
   const playAudioResponse = useCallback(async (text: string) => {
     if (isMuted) return true
 
@@ -348,7 +343,7 @@ export default function NavalHelmInterface() {
   }, [])
 
   return (
-    <div className="w-full p-4 sm:p-6 bg-[hsl(0,0%,12%)] rounded-lg shadow-2xl relative">
+    <div className="w-full p-4 sm:p-6 rounded-lg shadow-2xl bg-[hsl(var(--app-background))]">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Naval Helm Interface</h1>
         <div className="flex items-center gap-2">

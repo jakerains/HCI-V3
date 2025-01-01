@@ -21,10 +21,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} dark`}>
-      <body className="min-h-screen">
+    <html lang="en" className={`${inter.variable}`}>
+      <body className="min-h-screen bg-background">
         <ThemeProvider>
-          <div className="min-h-screen bg-[hsl(228,42%,10%)]">
+          <div className="min-h-screen">
             <Toaster />
             {children}
           </div>

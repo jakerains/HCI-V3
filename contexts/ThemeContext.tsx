@@ -21,31 +21,34 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [currentTheme, setCurrentTheme] = useState<Theme>(defaultTheme)
   const [isDefaultTheme, setIsDefaultTheme] = useState(true)
 
+  // Initialize theme on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme && themes[savedTheme]) {
+      setTheme(savedTheme)
+    } else {
+      setTheme('dark')
+    }
+  }, [])
+
   const setTheme = (themeName: string) => {
     if (themes[themeName]) {
       setCurrentTheme(themes[themeName])
       setIsDefaultTheme(themeName === 'dark')
-      // Update Tailwind's dark mode class
+      
+      // Update document class and localStorage
       if (themeName === 'dark') {
         document.documentElement.classList.add('dark')
       } else {
         document.documentElement.classList.remove('dark')
       }
+      localStorage.setItem('theme', themeName)
     }
   }
 
   const resetToDefault = () => {
-    setCurrentTheme(defaultTheme)
-    setIsDefaultTheme(true)
-    document.documentElement.classList.add('dark')
+    setTheme('dark')
   }
-
-  // Initialize dark mode class on mount
-  useEffect(() => {
-    if (isDefaultTheme) {
-      document.documentElement.classList.add('dark')
-    }
-  }, [])
 
   return (
     <ThemeContext.Provider value={{
