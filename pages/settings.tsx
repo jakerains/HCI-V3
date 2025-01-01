@@ -48,9 +48,22 @@ export default function SettingsPage() {
     const savedGeminiKey = localStorage.getItem('geminiApiKey') || ''
     const savedElevenLabsKey = localStorage.getItem('elevenLabsApiKey') || ''
     const savedActiveModel = localStorage.getItem('activeVoskModel') || ''
+    
+    // Check for environment variables
+    const envGeminiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+    const envElevenLabsKey = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
+    
     setGeminiKey(savedGeminiKey)
     setElevenLabsKey(savedElevenLabsKey)
     setActiveModel(savedActiveModel)
+
+    // If keys are in .env.local, show placeholder text
+    if (envGeminiKey) {
+      setGeminiKey('API key stored in .env.local')
+    }
+    if (envElevenLabsKey) {
+      setElevenLabsKey('API key stored in .env.local')
+    }
 
     // Check downloaded models
     fetchDownloadedModels()
@@ -74,8 +87,13 @@ export default function SettingsPage() {
   }
 
   const handleSaveKeys = () => {
-    localStorage.setItem('geminiApiKey', geminiKey)
-    localStorage.setItem('elevenLabsApiKey', elevenLabsKey)
+    // Don't overwrite .env.local keys with placeholder text
+    if (geminiKey !== 'API key stored in .env.local') {
+      localStorage.setItem('geminiApiKey', geminiKey)
+    }
+    if (elevenLabsKey !== 'API key stored in .env.local') {
+      localStorage.setItem('elevenLabsApiKey', elevenLabsKey)
+    }
     toast({
       title: "Settings Saved",
       description: "Your API keys have been saved successfully.",
@@ -176,6 +194,7 @@ export default function SettingsPage() {
                 value={geminiKey}
                 onChange={(e) => setGeminiKey(e.target.value)}
                 placeholder="Enter your Gemini API key"
+                disabled={geminiKey === 'API key stored in .env.local'}
               />
               <Link href="https://makersuite.google.com/app/apikey" target="_blank">
                 <Button variant="outline">Get Key</Button>
@@ -192,6 +211,7 @@ export default function SettingsPage() {
                 value={elevenLabsKey}
                 onChange={(e) => setElevenLabsKey(e.target.value)}
                 placeholder="Enter your ElevenLabs API key"
+                disabled={elevenLabsKey === 'API key stored in .env.local'}
               />
               <Link href="https://elevenlabs.io/subscription" target="_blank">
                 <Button variant="outline">Get Key</Button>

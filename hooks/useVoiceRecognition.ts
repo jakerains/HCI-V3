@@ -25,23 +25,33 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<any>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const processingRef = useRef(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        setError('Speech recognition is not supported in this browser.')
+      // Check for browser support
+      const SpeechRecognition = (window as any).SpeechRecognition || 
+                               (window as any).webkitSpeechRecognition || 
+                               (window as any).mozSpeechRecognition || 
+                               (window as any).msSpeechRecognition
+
+      if (!SpeechRecognition) {
+        setError('Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.')
         return
       }
 
-      const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition
       const recognitionInstance = new SpeechRecognition()
 
+      // Configure for optimal voice command recognition
       recognitionInstance.continuous = true
       recognitionInstance.interimResults = true
       recognitionInstance.lang = 'en-US'
+      
+      // Some browsers need these explicitly set
+      recognitionInstance.maxAlternatives = 1
+      recognitionInstance.serviceURI = 'http://localhost:2700'
 
       recognitionInstance.onstart = () => {
         console.log('Voice recognition started')
@@ -50,15 +60,31 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
         processingRef.current = false
       }
 
-      recognitionInstance.onerror = (event) => {
+      recognitionInstance.onerror = (event: any) => {
         console.error('Voice recognition error:', event.error)
+        // Don't show error for no-speech as it's common
         if (event.error !== 'no-speech') {
-          setError(`Error: ${event.error}`)
+          let errorMessage = 'Error: '
+          switch (event.error) {
+            case 'network':
+              errorMessage += 'Network error occurred. Please check your connection.'
+              break
+            case 'not-allowed':
+            case 'permission-denied':
+              errorMessage += 'Microphone access denied. Please check your browser permissions.'
+              break
+            case 'service-not-allowed':
+              errorMessage += 'Speech service not allowed. Please check your browser settings.'
+              break
+            default:
+              errorMessage += event.error
+          }
+          setError(errorMessage)
           setIsListening(false)
         }
       }
 
-      recognitionInstance.onresult = (event) => {
+      recognitionInstance.onresult = (event: any) => {
         const current = event.resultIndex
         const transcript = event.results[current][0].transcript.trim()
         
@@ -120,12 +146,21 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
     if (recognitionRef.current) {
       try {
         if (!isListening) {
-          processingRef.current = false
-          recognitionRef.current.start()
+          // Request microphone permission explicitly
+          navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(() => {
+              processingRef.current = false
+              recognitionRef.current.start()
+            })
+            .catch((err) => {
+              console.error('Microphone permission error:', err)
+              setError('Microphone access denied. Please check your browser permissions.')
+              setIsListening(false)
+            })
         }
       } catch (err) {
         console.error('Error starting recognition:', err)
-        setError('Failed to start voice recognition')
+        setError('Failed to start voice recognition. Please refresh the page and try again.')
         setIsListening(false)
       }
     }

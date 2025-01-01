@@ -1,14 +1,15 @@
 import { getGeminiApiKey, getElevenLabsApiKey } from './api-keys'
 
 // Constants
+const DEFAULT_ELEVENLABS_VOICE_ID = '9PVP7ENhDskL0KYHAKtD'
 const DEFAULT_ELEVENLABS_MODEL_ID = 'eleven_flash_v2'
 const DEFAULT_GEMINI_MODEL_ID = 'gemini-1.5-flash'
 
-// Configuration with environment variable overrides
+// Configuration with hardcoded values
 export const config = {
   elevenlabs: {
-    voiceId: process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID || '',
-    modelId: process.env.NEXT_PUBLIC_ELEVENLABS_MODEL_ID || DEFAULT_ELEVENLABS_MODEL_ID,
+    voiceId: DEFAULT_ELEVENLABS_VOICE_ID,
+    modelId: DEFAULT_ELEVENLABS_MODEL_ID,
     get apiKey() {
       return getElevenLabsApiKey()
     }

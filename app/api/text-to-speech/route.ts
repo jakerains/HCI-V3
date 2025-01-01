@@ -1,19 +1,18 @@
 import { NextResponse } from 'next/server'
+import { config } from '@/lib/config'
 
 export async function POST(request: Request) {
   const { text } = await request.json()
   
-  // Get credentials from request headers
+  // Get API key from request headers or environment variable
   const apiKey = request.headers.get('x-elevenlabs-key') || process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
-  const voiceId = request.headers.get('x-elevenlabs-voice-id') || process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID
-  const modelId = request.headers.get('x-elevenlabs-model-id') || process.env.NEXT_PUBLIC_ELEVENLABS_MODEL_ID || 'eleven_flash_v2'
-
-  if (!apiKey || !voiceId) {
-    return NextResponse.json({ error: 'Missing API key or Voice ID' }, { status: 500 })
+  
+  if (!apiKey) {
+    return NextResponse.json({ error: 'Missing API key' }, { status: 500 })
   }
 
   try {
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${config.elevenlabs.voiceId}`, {
       method: 'POST',
       headers: {
         'Accept': 'audio/mpeg',
@@ -22,7 +21,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         text,
-        model_id: modelId
+        model_id: config.elevenlabs.modelId
       }),
     })
 
