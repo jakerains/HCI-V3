@@ -4,10 +4,19 @@ export function useAudioFeedback() {
   const playAudioFeedback = useCallback(async (text: string) => {
     try {
       console.log('Attempting to fetch audio...')
+      
+      // Get credentials from localStorage
+      const apiKey = localStorage.getItem('elevenLabsApiKey')
+      const voiceId = localStorage.getItem('elevenLabsVoiceId')
+      const modelId = localStorage.getItem('elevenLabsModelId') || 'eleven_flash_v2'
+
       const response = await fetch('/api/text-to-speech', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-elevenlabs-key': apiKey || '',
+          'x-elevenlabs-voice-id': voiceId || '',
+          'x-elevenlabs-model-id': modelId,
         },
         body: JSON.stringify({ text }),
       })
