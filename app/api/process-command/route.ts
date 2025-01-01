@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { Groq } from 'groq-sdk'
+import { GoogleGenerativeAI } from "@google/generative-ai"
 
 // Naval command patterns and configurations
 const NAVAL_PATTERNS = {
@@ -50,7 +50,6 @@ const NAVAL_NUMBERS = {
 }
 
 function formatNavalCourse(course: number): string {
-  // Convert a number like 090 to "zero niner zero"
   return course.toString().padStart(3, '0').split('')
     .map(digit => {
       const num = parseInt(digit) as keyof typeof NAVAL_NUMBERS
@@ -59,31 +58,21 @@ function formatNavalCourse(course: number): string {
     .join(' ')
 }
 
-const GROQ_API_KEY = process.env.NEXT_PUBLIC_GROQ_API_KEY
-const GROQ_MODEL_ID = process.env.GROQ_MODEL_ID
+const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+const GEMINI_MODEL = "gemini-1.5-flash"
 
 export async function POST(request: Request) {
   try {
-    // Initialize Groq client inside the handler
-    if (!process.env.NEXT_PUBLIC_GROQ_API_KEY) {
-      console.error('Missing NEXT_PUBLIC_GROQ_API_KEY environment variable')
+    if (!GEMINI_API_KEY) {
+      console.error('Missing NEXT_PUBLIC_GEMINI_API_KEY environment variable')
       return NextResponse.json(
-        { error: 'Missing GROQ_API_KEY environment variable' },
+        { error: 'Missing NEXT_PUBLIC_GEMINI_API_KEY environment variable. Please set this in your .env.local file.' },
         { status: 500 }
       )
     }
 
-    if (!process.env.GROQ_MODEL_ID) {
-      console.error('Missing GROQ_MODEL_ID environment variable')
-      return NextResponse.json(
-        { error: 'Missing GROQ_MODEL_ID environment variable' },
-        { status: 500 }
-      )
-    }
-
-    const client = new Groq({
-      apiKey: GROQ_API_KEY,
-    })
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL })
 
     let body
     try {
@@ -112,11 +101,11 @@ export async function POST(request: Request) {
     try {
       // First, correct any transcription errors and normalize the command format
       console.log('Sending command for correction:', command)
-      const correctionCompletion = await client.chat.completions.create({
-        messages: [
-          { 
-            role: 'system', 
-            content: `You are a naval command correction system. Return ONLY the corrected command with no explanations, notes, or additional text.
+      const correctionResult = await model.generateContent({
+        contents: [{
+          role: "user",
+          parts: [{
+            text: `You are a naval command correction system. Return ONLY the corrected command with no explanations.
 
 Common fixes:
 - "home/hell/help/held" → "helm"
@@ -130,32 +119,21 @@ Format:
 3. Course: "steady on course" with naval numbers
 4. Speed: Optional, do not add if not in original command
 
-CRITICAL: Return ONLY the corrected command text. No explanations. No notes. No suggestions.`
-          },
-          { role: 'user', content: command }
-        ],
-        model: process.env.GROQ_MODEL_ID,
-        max_tokens: 100,
-        temperature: 0.1,
-        top_p: 0.9,
-        response_format: { type: "text" }
+Command to correct: ${command}`
+          }]
+        }]
       })
 
-      if (!correctionCompletion.choices?.[0]?.message?.content) {
-        console.error('No correction response generated')
-        throw new Error('No correction response generated')
-      }
-
-      const correctedCommand = correctionCompletion.choices[0].message.content.trim()
+      const correctedCommand = correctionResult.response.text().trim()
       console.log('Corrected command:', correctedCommand)
 
       // Now interpret the command and generate state updates
       console.log('Sending corrected command for interpretation:', correctedCommand)
-      const interpretationCompletion = await client.chat.completions.create({
-        messages: [
-          { 
-            role: 'system', 
-            content: `You are a naval command interpreter. Return ONLY a JSON object with no explanations or additional text.
+      const interpretationResult = await model.generateContent({
+        contents: [{
+          role: "user",
+          parts: [{
+            text: `You are a naval command interpreter. Parse the command and return a JSON object.
 
 Current ship state: ${JSON.stringify(currentState)}
 
@@ -164,55 +142,33 @@ Rules:
 2. Speed: -100 to +110 (negative=astern)
 3. Course: 0-359
 
-CRITICAL: Return ONLY this JSON format with no explanations or notes:
+Return ONLY a JSON object in this exact format:
 {
   "stateUpdates": {
-    "rudder": number | null,
-    "course": number | null,
-    "speed": null  // Only set if speed command is present
+    "rudder": number,    // Required: -35 to +35 (negative=left)
+    "course": number,    // Required: 0-359
+    "speed": null       // Optional: -100 to +110 (negative=astern)
   },
-  "helmAcknowledgment": string,  // Just the command acknowledgment
-  "statusReport": string         // Brief status only
-}`
-          },
-          { role: 'user', content: correctedCommand }
-        ],
-        model: process.env.GROQ_MODEL_ID,
-        max_tokens: 250,
-        temperature: 0.1,
-        top_p: 0.9,
-        response_format: { type: "json_object" }
+  "helmAcknowledgment": string,  // Required: Just the command acknowledgment
+  "statusReport": string         // Required: Brief status only
+}
+
+Command to interpret: ${correctedCommand}`
+          }]
+        }]
       })
 
-      if (!interpretationCompletion.choices?.[0]?.message?.content) {
-        console.error('No interpretation response generated')
-        throw new Error('No interpretation response generated')
-      }
-
-      let interpretation
-      try {
-        const rawResponse = interpretationCompletion.choices[0].message.content.trim()
-        console.log('Raw interpretation response:', rawResponse)
-        
-        // Try to extract JSON if the response contains explanatory text
-        const jsonMatch = rawResponse.match(/\{[\s\S]*\}/)
-        if (jsonMatch) {
-          interpretation = JSON.parse(jsonMatch[0])
-        } else {
-          interpretation = JSON.parse(rawResponse)
-        }
-      } catch (error) {
-        console.error('Error parsing interpretation response:', error)
-        console.error('Raw response:', interpretationCompletion.choices[0].message.content)
-        throw new Error('Invalid interpretation response format')
-      }
-
-      console.log('Parsed interpretation:', interpretation)
+      const interpretationText = interpretationResult.response.text().trim()
+      console.log('Raw interpretation:', interpretationText)
+      
+      // Remove markdown code block if present
+      const jsonText = interpretationText.replace(/^```json\n|\n```$/g, '').trim()
+      console.log('Cleaned JSON:', jsonText)
+      const interpretation = JSON.parse(jsonText)
 
       // Validate the interpretation structure
       if (!interpretation.stateUpdates || !interpretation.helmAcknowledgment || !interpretation.statusReport) {
-        console.error('Invalid interpretation structure:', interpretation)
-        throw new Error('Invalid interpretation structure')
+        throw new Error('Invalid response structure')
       }
 
       // Format the course number in the response if it exists

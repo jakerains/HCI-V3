@@ -1,311 +1,325 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
+import { Progress } from '@/components/ui/progress'
 import Link from 'next/link'
-import { ArrowLeft, Save, Key, CheckCircle2, Download, Cpu, Loader2 } from 'lucide-react'
-import { useTheme } from '@/contexts/ThemeContext'
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { ArrowLeft, Check, Download } from 'lucide-react'
 
-const VOSK_MODELS = {
-  small: {
-    id: 'vosk-model-small-en-us-0.15',
-    name: 'Small US English Model',
-    size: '40MB',
-    url: 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip',
-    description: 'Lightweight wideband model for Android and RPi. WER: 9.85 (librispeech test-clean)',
-  },
-  large: {
-    id: 'vosk-model-en-us-0.22',
-    name: 'Large US English Model',
-    size: '1.8GB',
-    url: 'https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip',
-    description: 'Accurate generic US English model. WER: 5.69 (librispeech test-clean)',
-  }
+interface VoskModel {
+  name: string
+  size: string
+  description: string
 }
 
-type ModelStatus = {
-  id: string
-  installed: boolean
-  inProgress?: boolean
-  error?: string
+const VOSK_MODELS: Record<string, VoskModel> = {
+  'vosk-model-small-en-us-0.15': {
+    name: 'Small (English)',
+    size: '~40MB',
+    description: 'Basic accuracy, fastest performance'
+  },
+  'vosk-model-en-us-0.22': {
+    name: 'Medium (English)',
+    size: '~1.8GB',
+    description: 'Good accuracy, balanced performance'
+  },
+  'vosk-model-en-us-0.42-gigaspeech': {
+    name: 'Large (English)',
+    size: '~2.3GB',
+    description: 'Best accuracy for podcasts and clear speech'
+  }
 }
 
 export default function Settings() {
-  const [groqKey, setGroqKey] = useState('')
-  const [elevenLabsKey, setElevenLabsKey] = useState('')
-  const [selectedModel, setSelectedModel] = useState('small')
-  const [modelStatuses, setModelStatuses] = useState<ModelStatus[]>([])
-  const [downloading, setDownloading] = useState<string | null>(null)
-  const [envKeys, setEnvKeys] = useState({
-    groq: false,
-    elevenLabs: false
+  const [selectedModel, setSelectedModel] = useState<string>('')
+  const [downloadedModels, setDownloadedModels] = useState<string[]>([])
+  const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({})
+  const [geminiKey, setGeminiKey] = useState<string>('')
+  const [elevenLabsKey, setElevenLabsKey] = useState<string>('')
+  const [apiKeysPresent, setApiKeysPresent] = useState({
+    gemini: !!process.env.NEXT_PUBLIC_GEMINI_API_KEY,
+    elevenLabs: !!process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
   })
   const { toast } = useToast()
-  const { theme } = useTheme()
 
   useEffect(() => {
-    // Check environment variables
-    setEnvKeys({
-      groq: !!process.env.NEXT_PUBLIC_GROQ_API_KEY,
-      elevenLabs: !!process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
-    })
-
     // Load existing keys from localStorage if they exist
-    const savedGroqKey = localStorage.getItem('GROQ_API_KEY')
+    const savedGeminiKey = localStorage.getItem('GEMINI_API_KEY')
     const savedElevenLabsKey = localStorage.getItem('ELEVENLABS_API_KEY')
     const savedModel = localStorage.getItem('VOSK_MODEL')
-    
-    if (savedGroqKey) setGroqKey(savedGroqKey)
+
+    if (savedGeminiKey) setGeminiKey(savedGeminiKey)
     if (savedElevenLabsKey) setElevenLabsKey(savedElevenLabsKey)
     if (savedModel) setSelectedModel(savedModel)
 
-    // Load model statuses
-    fetchModelStatuses()
+    // Check which models are downloaded
+    checkDownloadedModels()
   }, [])
 
-  const fetchModelStatuses = async () => {
+  const checkDownloadedModels = async () => {
     try {
       const response = await fetch('/api/vosk-model')
-      if (!response.ok) throw new Error('Failed to fetch model statuses')
-      const statuses = await response.json()
-      setModelStatuses(statuses)
+      const data = await response.json()
+      console.log('Downloaded models:', data.downloadedModels) // Debug log
+      if (data.downloadedModels) {
+        setDownloadedModels(data.downloadedModels)
+        // If no model is selected but we have one downloaded, select it
+        if (!selectedModel && data.downloadedModels.length > 0) {
+          const modelToSelect = data.downloadedModels[0]
+          setSelectedModel(modelToSelect)
+          localStorage.setItem('VOSK_MODEL', modelToSelect)
+        }
+      }
     } catch (error) {
-      console.error('Error fetching model statuses:', error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch model statuses",
-        className: theme.status.error
-      })
+      console.error('Error checking downloaded models:', error)
     }
   }
 
-  const handleSave = () => {
-    // Save keys to localStorage with the correct key names
-    if (groqKey) localStorage.setItem('GROQ_API_KEY', groqKey)
-    if (elevenLabsKey) localStorage.setItem('ELEVENLABS_API_KEY', elevenLabsKey)
-    localStorage.setItem('VOSK_MODEL', selectedModel)
-
-    toast({
-      title: "Settings saved",
-      description: "Your settings have been saved successfully. Please restart the application for changes to take effect.",
-      className: theme.status.success
-    })
-  }
-
-  const handleDownloadModel = async (modelId: string, modelUrl: string) => {
-    setDownloading(modelId)
+  const handleModelDownload = async (modelId: string) => {
     try {
+      setDownloadProgress(prev => ({ ...prev, [modelId]: 0 }))
+      
+      toast({
+        title: 'Downloading model...',
+        description: `Downloading ${VOSK_MODELS[modelId].name}. This may take a while.`,
+      })
+
+      // First initiate the download
       const response = await fetch('/api/vosk-model', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ modelId, url: modelUrl }),
+        body: JSON.stringify({ modelId }),
       })
 
-      if (!response.ok) throw new Error('Failed to start download')
+      if (!response.ok) {
+        throw new Error('Failed to download model')
+      }
 
-      toast({
-        title: "Download Started",
-        description: "The model download has started. This may take a while.",
-        className: theme.status.success
-      })
+      // Set up event source to receive progress updates
+      const eventSource = new EventSource(`/api/vosk-model/progress?modelId=${modelId}`)
 
-      // Poll for status updates
-      const checkStatus = setInterval(async () => {
-        const statuses = await fetch('/api/vosk-model').then(res => res.json())
-        setModelStatuses(statuses)
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data)
         
-        const status = statuses.find((s: ModelStatus) => s.id === modelId)
-        if (status?.installed) {
-          clearInterval(checkStatus)
-          setDownloading(null)
-          toast({
-            title: "Download Complete",
-            description: "The model has been downloaded and installed successfully.",
-            className: theme.status.success
+        if (data.status === 'downloading' || data.status === 'extracting') {
+          setDownloadProgress(prev => ({ ...prev, [modelId]: data.progress }))
+        }
+        else if (data.status === 'complete') {
+          eventSource.close()
+          setDownloadProgress(prev => {
+            const newProgress = { ...prev }
+            delete newProgress[modelId]
+            return newProgress
           })
-        } else if (status?.error) {
-          clearInterval(checkStatus)
-          setDownloading(null)
+          checkDownloadedModels()
           toast({
-            title: "Download Failed",
-            description: status.error,
-            className: theme.status.error
+            title: 'Model downloaded',
+            description: `${VOSK_MODELS[modelId].name} has been downloaded successfully.`,
           })
         }
-      }, 5000) // Check every 5 seconds
+        else if (data.status === 'error') {
+          eventSource.close()
+          setDownloadProgress(prev => {
+            const newProgress = { ...prev }
+            delete newProgress[modelId]
+            return newProgress
+          })
+          toast({
+            title: 'Download failed',
+            description: data.error || 'Failed to download the model. Please try again.',
+            variant: 'destructive',
+          })
+        }
+      }
 
+      eventSource.onerror = () => {
+        eventSource.close()
+        setDownloadProgress(prev => {
+          const newProgress = { ...prev }
+          delete newProgress[modelId]
+          return newProgress
+        })
+        toast({
+          title: 'Download failed',
+          description: 'Failed to download the model. Please try again.',
+          variant: 'destructive',
+        })
+      }
     } catch (error) {
       console.error('Error downloading model:', error)
-      toast({
-        title: "Download Failed",
-        description: "Failed to download the model. Please try again.",
-        className: theme.status.error
+      setDownloadProgress(prev => {
+        const newProgress = { ...prev }
+        delete newProgress[modelId]
+        return newProgress
       })
-      setDownloading(null)
+      toast({
+        title: 'Download failed',
+        description: 'Failed to download the model. Please try again.',
+        variant: 'destructive',
+      })
     }
   }
 
-  const isModelInstalled = (modelId: string) => {
-    return modelStatuses.some(status => status.id === modelId && status.installed)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Save API keys to localStorage
+    if (geminiKey) localStorage.setItem('GEMINI_API_KEY', geminiKey)
+    if (elevenLabsKey) localStorage.setItem('ELEVENLABS_API_KEY', elevenLabsKey)
+    localStorage.setItem('VOSK_MODEL', selectedModel)
+
+    toast({
+      title: 'Settings saved',
+      description: 'Your settings have been saved successfully.',
+    })
   }
 
   return (
-    <div className={`min-h-screen ${theme.colors.background} ${theme.text.primary}`}>
-      <div className="container mx-auto p-4 max-w-2xl">
-        <div className="mb-6">
-          <Link 
-            href="/" 
-            className={`inline-flex items-center text-sm ${theme.text.muted} hover:${theme.text.primary}`}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Helm
-          </Link>
-        </div>
+    <div className="container mx-auto p-4">
+      <div className="mb-6">
+        <Link 
+          href="/" 
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Helm
+        </Link>
+      </div>
 
-        <div className="space-y-6">
-          <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder}`}>
-            <CardHeader>
-              <CardTitle className={`text-xl font-bold ${theme.text.primary} flex items-center gap-2`}>
-                <Key className="h-5 w-5" />
-                API Configuration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="groq-key" className={theme.text.secondary}>Groq API Key</Label>
-                  {envKeys.groq && (
-                    <div className="flex items-center text-sm text-green-500 dark:text-green-400">
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Available from environment
-                    </div>
-                  )}
-                </div>
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Settings</CardTitle>
+          <CardDescription>Configure your API keys and model settings</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="geminiKey">Google Gemini API Key</Label>
+              <div className="flex items-center space-x-2">
                 <Input
-                  id="groq-key"
                   type="password"
-                  value={groqKey}
-                  onChange={(e) => setGroqKey(e.target.value)}
-                  placeholder={envKeys.groq ? "Using environment variable" : "Enter your Groq API key"}
-                  className={`${theme.colors.cardBackground} ${theme.colors.cardBorder} ${theme.text.primary}`}
+                  id="geminiKey"
+                  placeholder={apiKeysPresent.gemini ? '••••••••' : 'Enter your Gemini API key'}
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
                 />
+                {apiKeysPresent.gemini && (
+                  <span className="text-sm text-green-500">Present in .env</span>
+                )}
               </div>
+              <a 
+                href="https://makersuite.google.com/app/apikey" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 hover:text-blue-600 mt-1 inline-block"
+              >
+                Get Gemini API Key →
+              </a>
+            </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="elevenlabs-key" className={theme.text.secondary}>ElevenLabs API Key</Label>
-                  {envKeys.elevenLabs && (
-                    <div className="flex items-center text-sm text-green-500 dark:text-green-400">
-                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Available from environment
-                    </div>
-                  )}
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="elevenLabsKey">ElevenLabs API Key</Label>
+              <div className="flex items-center space-x-2">
                 <Input
-                  id="elevenlabs-key"
                   type="password"
+                  id="elevenLabsKey"
+                  placeholder={apiKeysPresent.elevenLabs ? '••••••••' : 'Enter your ElevenLabs API key'}
                   value={elevenLabsKey}
                   onChange={(e) => setElevenLabsKey(e.target.value)}
-                  placeholder={envKeys.elevenLabs ? "Using environment variable" : "Enter your ElevenLabs API key"}
-                  className={`${theme.colors.cardBackground} ${theme.colors.cardBorder} ${theme.text.primary}`}
                 />
+                {apiKeysPresent.elevenLabs && (
+                  <span className="text-sm text-green-500">Present in .env</span>
+                )}
               </div>
-
-              <div className={`text-sm ${theme.text.muted}`}>
-                Note: Keys saved here will override environment variables.
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder}`}>
-            <CardHeader>
-              <CardTitle className={`text-xl font-bold ${theme.text.primary} flex items-center gap-2`}>
-                <Cpu className="h-5 w-5" />
-                Speech Recognition Model
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <RadioGroup 
-                value={selectedModel} 
-                onValueChange={setSelectedModel}
-                className="space-y-4"
+              <a 
+                href="https://elevenlabs.io/subscription" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs text-blue-500 hover:text-blue-600 mt-1 inline-block"
               >
-                {Object.entries(VOSK_MODELS).map(([key, model]) => {
-                  const installed = isModelInstalled(model.id)
-                  const isDownloading = downloading === model.id
+                Get ElevenLabs API Key →
+              </a>
+            </div>
 
+            <div className="space-y-4">
+              <Label>Vosk Model</Label>
+              <div className="space-y-3">
+                {Object.entries(VOSK_MODELS).map(([modelId, model]) => {
+                  const isDownloaded = downloadedModels.includes(modelId)
+                  const isSelected = selectedModel === modelId
+                  const progress = downloadProgress[modelId]
+                  
                   return (
-                    <div key={key} className={`flex items-start space-x-3 p-4 rounded-lg border ${theme.colors.cardBorder}`}>
-                      <RadioGroupItem value={key} id={key} disabled={!installed && !isDownloading} />
-                      <div className="flex-1 space-y-1">
-                        <Label 
-                          htmlFor={key} 
-                          className={`text-base font-medium ${theme.text.primary} flex items-center justify-between`}
-                        >
+                    <div 
+                      key={modelId} 
+                      className={`flex items-center justify-between p-3 border rounded-lg ${
+                        isDownloaded ? 'bg-muted/50' : ''
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <div className="font-medium flex items-center gap-2">
                           {model.name}
-                          <span className={`text-sm ${theme.text.muted}`}>{model.size}</span>
-                        </Label>
-                        <p className={`text-sm ${theme.text.muted}`}>{model.description}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {installed ? (
-                            <div className="flex items-center text-sm text-green-500 dark:text-green-400">
-                              <CheckCircle2 className="h-4 w-4 mr-1" />
-                              Installed
-                            </div>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDownloadModel(model.id, model.url)}
-                              disabled={isDownloading}
-                              className={theme.colors.cardBorder}
-                            >
-                              {isDownloading ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                  Downloading...
-                                </>
-                              ) : (
-                                <>
-                                  <Download className="h-4 w-4 mr-1" />
-                                  Download Model
-                                </>
-                              )}
-                            </Button>
-                          )}
+                          {isDownloaded && <Check className="h-4 w-4 text-green-500" />}
                         </div>
+                        <div className="text-sm text-muted-foreground">{model.description}</div>
+                        <div className="text-xs text-muted-foreground">Size: {model.size}</div>
+                        {progress !== undefined && (
+                          <div className="mt-2">
+                            <Progress value={progress} className="h-2" />
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Downloading: {progress}%
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {isDownloaded ? (
+                          <Button
+                            type="button"
+                            variant={isSelected ? "default" : "outline"}
+                            onClick={() => {
+                              setSelectedModel(modelId)
+                              localStorage.setItem('VOSK_MODEL', modelId)
+                            }}
+                            className="min-w-[100px]"
+                          >
+                            {isSelected ? "Selected" : "Select"}
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleModelDownload(modelId)}
+                            className="min-w-[100px]"
+                            disabled={progress !== undefined}
+                          >
+                            {progress !== undefined ? (
+                              "Downloading..."
+                            ) : (
+                              <>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )
                 })}
-              </RadioGroup>
-
-              <div className={`text-sm ${theme.text.muted}`}>
-                Note: Changing the model requires restarting the application.
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          <Button 
-            onClick={handleSave} 
-            className={`w-full ${theme.status.success}`}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            Save Settings
-          </Button>
-        </div>
-
-        <div className={`text-[10px] ${theme.text.muted} text-center mt-4`}>
-          v0.3.0
-        </div>
-      </div>
+            <Button type="submit" className="w-full">Save Settings</Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 } 

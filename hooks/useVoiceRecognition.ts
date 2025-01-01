@@ -9,6 +9,18 @@ interface VoiceRecognitionHook {
   setTranscript: (transcript: string) => void
 }
 
+// Common misrecognitions of "helm"
+const HELM_ALIASES = [
+  'helm',
+  'home',
+  'hell',
+  'help',
+  'held',
+  'health',
+  'hem',
+  'hum'
+]
+
 export function useVoiceRecognition(): VoiceRecognitionHook {
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -59,12 +71,18 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
         if (event.results[current].isFinal) {
           console.log('Final transcript:', transcript)
           
-          // Process any command that starts with "helm" or "Helm"
-          if (transcript.toLowerCase().startsWith('helm') && !processingRef.current) {
+          // Check for any of the helm aliases at the start of the transcript
+          const words = transcript.toLowerCase().split(/\s+/)
+          const startsWithHelm = HELM_ALIASES.some(alias => words[0] === alias)
+          
+          if (startsWithHelm && !processingRef.current) {
             processingRef.current = true
             
+            // Replace the misrecognized word with "helm"
+            const correctedTranscript = 'helm' + transcript.slice(words[0].length)
+            
             timeoutRef.current = setTimeout(() => {
-              setTranscript(transcript)
+              setTranscript(correctedTranscript)
               processingRef.current = false
             }, 500)
           }
@@ -101,14 +119,17 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
   const startListening = useCallback(() => {
     if (recognitionRef.current) {
       try {
-        processingRef.current = false
-        recognitionRef.current.start()
+        if (!isListening) {
+          processingRef.current = false
+          recognitionRef.current.start()
+        }
       } catch (err) {
         console.error('Error starting recognition:', err)
         setError('Failed to start voice recognition')
+        setIsListening(false)
       }
     }
-  }, [])
+  }, [isListening])
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current) {
@@ -116,13 +137,15 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current)
         }
-        recognitionRef.current.stop()
+        if (isListening) {
+          recognitionRef.current.stop()
+        }
         processingRef.current = false
       } catch (err) {
         console.error('Error stopping recognition:', err)
       }
     }
-  }, [])
+  }, [isListening])
 
   return {
     isListening,

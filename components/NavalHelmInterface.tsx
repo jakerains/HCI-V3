@@ -105,7 +105,7 @@ export default function NavalHelmInterface() {
   const [commandLog, setCommandLog] = useState<string[]>([])
   const [screenResponse, setScreenResponse] = useState('')
   const [processingCommand, setProcessingCommand] = useState(false)
-  const [missingKeys, setMissingKeys] = useState({ groq: false, elevenLabs: false })
+  const [missingKeys, setMissingKeys] = useState({ gemini: false, elevenLabs: false })
   const [showExamples, setShowExamples] = useState(false)
 
   const { 
@@ -122,7 +122,7 @@ export default function NavalHelmInterface() {
     const checkKeys = () => {
       const keyStatus = checkApiKeys()
       setMissingKeys({
-        groq: !keyStatus.groq,
+        gemini: !keyStatus.gemini,
         elevenLabs: !keyStatus.elevenLabs
       })
     }
@@ -276,7 +276,9 @@ export default function NavalHelmInterface() {
         }
         if (result.stateUpdates.course !== null) {
           console.log('NavalHelmInterface - Updating course from:', shipState.course, 'to:', result.stateUpdates.course)
-          newShipState.course = Number(result.stateUpdates.course)
+          // Normalize course to 0-360 range
+          const normalizedCourse = ((Number(result.stateUpdates.course) % 360) + 360) % 360
+          newShipState.course = normalizedCourse
         }
         if (result.stateUpdates.speed !== null) {
           newShipState.speed = result.stateUpdates.speed
@@ -354,7 +356,7 @@ export default function NavalHelmInterface() {
               className="relative"
             >
               <Settings className="h-5 w-5" />
-              {(missingKeys.groq || missingKeys.elevenLabs) && (
+              {(missingKeys.gemini || missingKeys.elevenLabs) && (
                 <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full" />
               )}
             </Button>
@@ -362,13 +364,13 @@ export default function NavalHelmInterface() {
         </div>
       </div>
 
-      {(missingKeys.groq || missingKeys.elevenLabs) && (
+      {(missingKeys.gemini || missingKeys.elevenLabs) && (
         <div className="mb-4 p-4 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg">
           <p className="text-sm">
-            {missingKeys.groq && missingKeys.elevenLabs ? (
-              <>Missing Groq and ElevenLabs API keys. </>
-            ) : missingKeys.groq ? (
-              <>Missing Groq API key. </>
+            {missingKeys.gemini && missingKeys.elevenLabs ? (
+              <>Missing Gemini and ElevenLabs API keys. </>
+            ) : missingKeys.gemini ? (
+              <>Missing Gemini API key. </>
             ) : (
               <>Missing ElevenLabs API key. </>
             )}
@@ -605,15 +607,13 @@ export default function NavalHelmInterface() {
             <CardContent>
               <div className="flex flex-col space-y-4">
                 <Button 
-                  onMouseDown={startListening}
-                  onMouseUp={stopListening}
-                  onMouseLeave={stopListening}
+                  onClick={toggleListening}
                   variant={isListening ? "destructive" : "default"} 
                   size="lg"
                   className="w-full text-sm sm:text-base"
                 >
                   {isListening ? <MicOff className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />}
-                  {isListening ? 'Release to Process' : 'Press and Hold to Speak'}
+                  {isListening ? 'Click to Stop' : 'Click to Start'}
                 </Button>
                 <Button 
                   onClick={toggleMute} 
