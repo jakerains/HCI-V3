@@ -188,10 +188,18 @@ export function useVoskRecognition() {
 
           // Check if we have a complete command
           const isCompleteCommand = (text: string) => {
-            return text.includes('helm') && (
-              (text.includes('degree') && text.includes('rudder')) ||
-              (text.includes('steady') && text.includes('course')) ||
-              (text.includes('all') && (text.includes('stop') || text.includes('ahead')))
+            const normalizedText = text.toLowerCase()
+              .replace(/°/g, ' degrees ')
+              .replace(/\s+/g, ' ')
+              .trim()
+            
+            return normalizedText.includes('helm') && (
+              // Rudder commands
+              ((/\d+/.test(normalizedText) && normalizedText.includes('rudder'))) ||
+              // Course commands
+              ((/\d+/.test(normalizedText) && normalizedText.includes('course'))) ||
+              // Speed commands
+              (normalizedText.includes('all') && (normalizedText.includes('stop') || normalizedText.includes('ahead') || normalizedText.includes('astern')))
             )
           }
           

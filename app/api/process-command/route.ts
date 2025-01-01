@@ -116,59 +116,29 @@ export async function POST(request: Request) {
         messages: [
           { 
             role: 'system', 
-            content: `You are a naval command correction system. Your job is to correct transcription errors and normalize naval helm commands to proper format.
+            content: `You are a naval command correction system. Return ONLY the corrected command with no explanations, notes, or additional text.
 
-Common transcription errors to fix:
-- "home" → "helm"
+Common fixes:
+- "home/hell/help/held" → "helm"
 - "love" → "left"
 - "write" → "right"
-- "hell", "help", "held" → "helm"
-- "study", "stud" → "steady"
-- "I had", "the head" → "ahead"
-- "won" → "one"
-- "tree" → "three"
-- "ford" → "four"
-- "1/3" → "one third"
-- "2/3" → "two thirds"
-- Single letters like "m", "h" → expand to proper word ("helm")
-- Degrees symbol (°) → "degrees"
+- Numbers: 0="zero", 1="one", 2="two", 3="three", 4="four", 5="five", 6="six", 7="seven", 8="eight", 9="niner"
 
-Number pronunciation:
-- 0 → "zero"
-- 1 → "one"
-- 2 → "two"
-- 3 → "three"
-- 4 → "four"
-- 5 → "five"
-- 6 → "six"
-- 7 → "seven"
-- 8 → "eight"
-- 9 → "niner"
+Format:
+1. Start with "Helm"
+2. Rudder: "Helm, [left/right] [X] degrees rudder"
+3. Course: "steady on course" with naval numbers
+4. Speed: Optional, do not add if not in original command
 
-Command format rules:
-1. Always start with "Helm" if not present
-2. For rudder commands: "Helm, [left/right] [X] degrees rudder"
-3. For course commands: add "steady on course" and use proper number pronunciation
-4. For speed commands: use "all ahead" or "all astern"
-5. Combine multiple parts with commas
-
-Examples:
-- "m rudder left 15° stud" → "Helm, left 15 degrees rudder, steady"
-- "helm write 20°" → "Helm, right 20 degrees rudder"
-- "help all I had 1/3" → "Helm, all ahead one third"
-- "steady on 090" → "steady on course zero niner zero"
-
-Return only the corrected command text with no explanation.` 
+CRITICAL: Return ONLY the corrected command text. No explanations. No notes. No suggestions.`
           },
-          { 
-            role: 'user', 
-            content: command 
-          }
+          { role: 'user', content: command }
         ],
         model: process.env.GROQ_MODEL_ID,
         max_tokens: 100,
         temperature: 0.1,
-        top_p: 0.9
+        top_p: 0.9,
+        response_format: { type: "text" }
       })
 
       if (!correctionCompletion.choices?.[0]?.message?.content) {
@@ -185,61 +155,33 @@ Return only the corrected command text with no explanation.`
         messages: [
           { 
             role: 'system', 
-            content: `You are a naval command interpreter. Return ONLY a JSON object with no explanation or text outside the JSON.
+            content: `You are a naval command interpreter. Return ONLY a JSON object with no explanations or additional text.
 
-CRITICAL: Your response must be a single JSON object. No markdown, no explanation, no additional text.
-
-Current ship state:
-${JSON.stringify(currentState, null, 2)}
+Current ship state: ${JSON.stringify(currentState)}
 
 Rules:
-1. Rudder angles:
-   - Left rudder uses negative numbers (e.g., "left 20" = -20)
-   - Right rudder uses positive numbers (e.g., "right 20" = +20)
-   - Range: -35 to +35
+1. Rudder: -35 to +35 (negative=left)
+2. Speed: -100 to +110 (negative=astern)
+3. Course: 0-359
 
-2. Speed settings:
-   ${JSON.stringify(NAVAL_PATTERNS.SPEED, null, 2)}
-
-3. Course: 0-359 degrees
-
-Required JSON format:
+CRITICAL: Return ONLY this JSON format with no explanations or notes:
 {
   "stateUpdates": {
-    "rudder": number | null,  // -35 to +35, negative for left
-    "course": number | null,  // 0-359
-    "speed": number | null    // -100 to +110
+    "rudder": number | null,
+    "course": number | null,
+    "speed": null  // Only set if speed command is present
   },
-  "helmAcknowledgment": string,  // The helm's "aye aye" response
-  "statusReport": string         // Brief status update of what changed
-}
-
-Example responses:
-For "Helm left 20 degrees rudder, all ahead full, steady on course 180":
-{
-  "stateUpdates": {"rudder":-20,"speed":90,"course":180},
-  "helmAcknowledgment": "left 20 degrees rudder, all ahead full, steady course one eight zero, aye aye",
-  "statusReport": "Rudder shifting left to 20 degrees, increasing speed to full ahead, coming to new course 180"
-}
-
-For "Helm rudder amidships":
-{
-  "stateUpdates": {"rudder":0,"speed":null,"course":null},
-  "helmAcknowledgment": "rudder amidships, aye aye",
-  "statusReport": "Centering rudder to zero degrees"
-}
-
-RETURN ONLY THE JSON OBJECT. NO OTHER TEXT.` 
+  "helmAcknowledgment": string,  // Just the command acknowledgment
+  "statusReport": string         // Brief status only
+}`
           },
-          { 
-            role: 'user', 
-            content: correctedCommand 
-          }
+          { role: 'user', content: correctedCommand }
         ],
         model: process.env.GROQ_MODEL_ID,
         max_tokens: 250,
         temperature: 0.1,
-        top_p: 0.9
+        top_p: 0.9,
+        response_format: { type: "json_object" }
       })
 
       if (!interpretationCompletion.choices?.[0]?.message?.content) {
