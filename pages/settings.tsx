@@ -34,61 +34,59 @@ const VOSK_MODELS: Record<string, VoskModel> = {
   }
 }
 
-export default function Settings() {
-  const [selectedModel, setSelectedModel] = useState<string>('')
-  const [downloadedModels, setDownloadedModels] = useState<string[]>([])
+export default function SettingsPage() {
+  const [geminiKey, setGeminiKey] = useState('')
+  const [elevenLabsKey, setElevenLabsKey] = useState('')
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({})
-  const [geminiKey, setGeminiKey] = useState<string>('')
-  const [elevenLabsKey, setElevenLabsKey] = useState<string>('')
-  const [apiKeysPresent, setApiKeysPresent] = useState({
-    gemini: !!process.env.NEXT_PUBLIC_GEMINI_API_KEY,
-    elevenLabs: !!process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
-  })
+  const [downloadedModels, setDownloadedModels] = useState<string[]>([])
   const { toast } = useToast()
 
   useEffect(() => {
-    // Load existing keys from localStorage if they exist
-    const savedGeminiKey = localStorage.getItem('GEMINI_API_KEY')
-    const savedElevenLabsKey = localStorage.getItem('ELEVENLABS_API_KEY')
-    const savedModel = localStorage.getItem('VOSK_MODEL')
+    // Load saved API keys
+    const savedGeminiKey = localStorage.getItem('geminiApiKey') || ''
+    const savedElevenLabsKey = localStorage.getItem('elevenLabsApiKey') || ''
+    setGeminiKey(savedGeminiKey)
+    setElevenLabsKey(savedElevenLabsKey)
 
-    if (savedGeminiKey) setGeminiKey(savedGeminiKey)
-    if (savedElevenLabsKey) setElevenLabsKey(savedElevenLabsKey)
-    if (savedModel) setSelectedModel(savedModel)
-
-    // Check which models are downloaded
-    checkDownloadedModels()
+    // Check downloaded models
+    fetchDownloadedModels()
   }, [])
 
-  const checkDownloadedModels = async () => {
+  const fetchDownloadedModels = async () => {
     try {
       const response = await fetch('/api/vosk-model')
       const data = await response.json()
-      console.log('Downloaded models:', data.downloadedModels) // Debug log
       if (data.downloadedModels) {
         setDownloadedModels(data.downloadedModels)
-        // If no model is selected but we have one downloaded, select it
-        if (!selectedModel && data.downloadedModels.length > 0) {
-          const modelToSelect = data.downloadedModels[0]
-          setSelectedModel(modelToSelect)
-          localStorage.setItem('VOSK_MODEL', modelToSelect)
-        }
       }
     } catch (error) {
-      console.error('Error checking downloaded models:', error)
+      console.error('Error fetching downloaded models:', error)
     }
+  }
+
+  const handleSaveKeys = () => {
+    localStorage.setItem('geminiApiKey', geminiKey)
+    localStorage.setItem('elevenLabsApiKey', elevenLabsKey)
+    toast({
+      title: "Settings Saved",
+      description: "Your API keys have been saved successfully.",
+    })
   }
 
   const handleModelDownload = async (modelId: string) => {
     try {
-      setDownloadProgress(prev => ({ ...prev, [modelId]: 0 }))
+      // Start progress monitoring
+      const eventSource = new EventSource(`/api/vosk-model/progress?modelId=${modelId}`)
       
-      toast({
-        title: 'Downloading model...',
-        description: `Downloading ${VOSK_MODELS[modelId].name}. This may take a while.`,
-      })
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        setDownloadProgress(prev => ({
+          ...prev,
+          [modelId]: data.progress
+        }))
+      }
 
-      // First initiate the download
+      // Start the download
       const response = await fetch('/api/vosk-model', {
         method: 'POST',
         headers: {
@@ -101,223 +99,138 @@ export default function Settings() {
         throw new Error('Failed to download model')
       }
 
-      // Set up event source to receive progress updates
-      const eventSource = new EventSource(`/api/vosk-model/progress?modelId=${modelId}`)
+      // Close the event source
+      eventSource.close()
 
-      eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data)
-        
-        if (data.status === 'downloading' || data.status === 'extracting') {
-          setDownloadProgress(prev => ({ ...prev, [modelId]: data.progress }))
-        }
-        else if (data.status === 'complete') {
-          eventSource.close()
-          setDownloadProgress(prev => {
-            const newProgress = { ...prev }
-            delete newProgress[modelId]
-            return newProgress
-          })
-          checkDownloadedModels()
-          toast({
-            title: 'Model downloaded',
-            description: `${VOSK_MODELS[modelId].name} has been downloaded successfully.`,
-          })
-        }
-        else if (data.status === 'error') {
-          eventSource.close()
-          setDownloadProgress(prev => {
-            const newProgress = { ...prev }
-            delete newProgress[modelId]
-            return newProgress
-          })
-          toast({
-            title: 'Download failed',
-            description: data.error || 'Failed to download the model. Please try again.',
-            variant: 'destructive',
-          })
-        }
-      }
-
-      eventSource.onerror = () => {
-        eventSource.close()
-        setDownloadProgress(prev => {
-          const newProgress = { ...prev }
-          delete newProgress[modelId]
-          return newProgress
-        })
-        toast({
-          title: 'Download failed',
-          description: 'Failed to download the model. Please try again.',
-          variant: 'destructive',
-        })
-      }
-    } catch (error) {
-      console.error('Error downloading model:', error)
+      // Clear progress and refresh downloaded models list
       setDownloadProgress(prev => {
         const newProgress = { ...prev }
         delete newProgress[modelId]
         return newProgress
       })
+
+      await fetchDownloadedModels()
+
       toast({
-        title: 'Download failed',
-        description: 'Failed to download the model. Please try again.',
-        variant: 'destructive',
+        title: "Download Complete",
+        description: "Vosk model has been downloaded and installed successfully.",
+      })
+    } catch (error) {
+      console.error('Error downloading model:', error)
+      toast({
+        title: "Download Failed",
+        description: error instanceof Error ? error.message : "Failed to download model",
+        variant: "destructive",
+      })
+
+      // Clean up on error
+      setDownloadProgress(prev => {
+        const newProgress = { ...prev }
+        delete newProgress[modelId]
+        return newProgress
       })
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // Save API keys to localStorage
-    if (geminiKey) localStorage.setItem('GEMINI_API_KEY', geminiKey)
-    if (elevenLabsKey) localStorage.setItem('ELEVENLABS_API_KEY', elevenLabsKey)
-    localStorage.setItem('VOSK_MODEL', selectedModel)
-
-    toast({
-      title: 'Settings saved',
-      description: 'Your settings have been saved successfully.',
-    })
-  }
-
   return (
-    <div className="container mx-auto p-4">
-      <div className="mb-6">
-        <Link 
-          href="/" 
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Helm
+    <div className="container max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex items-center gap-2 mb-6">
+        <Link href="/">
+          <Button variant="outline" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
         </Link>
+        <h1 className="text-2xl font-bold">Settings</h1>
       </div>
 
-      <Card className="w-full max-w-2xl mx-auto">
+      <Card>
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
-          <CardDescription>Configure your API keys and model settings</CardDescription>
+          <CardTitle>API Keys</CardTitle>
+          <CardDescription>Configure your API keys for voice and AI services.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="geminiKey">Google Gemini API Key</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  type="password"
-                  id="geminiKey"
-                  placeholder={apiKeysPresent.gemini ? '••••••••' : 'Enter your Gemini API key'}
-                  value={geminiKey}
-                  onChange={(e) => setGeminiKey(e.target.value)}
-                />
-                {apiKeysPresent.gemini && (
-                  <span className="text-sm text-green-500">Present in .env</span>
-                )}
-              </div>
-              <a 
-                href="https://makersuite.google.com/app/apikey" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-xs text-blue-500 hover:text-blue-600 mt-1 inline-block"
-              >
-                Get Gemini API Key →
-              </a>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="gemini-key">Google Gemini API Key</Label>
+            <div className="flex gap-2">
+              <Input
+                id="gemini-key"
+                type="password"
+                value={geminiKey}
+                onChange={(e) => setGeminiKey(e.target.value)}
+                placeholder="Enter your Gemini API key"
+              />
+              <Link href="https://makersuite.google.com/app/apikey" target="_blank">
+                <Button variant="outline">Get Key</Button>
+              </Link>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="elevenLabsKey">ElevenLabs API Key</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  type="password"
-                  id="elevenLabsKey"
-                  placeholder={apiKeysPresent.elevenLabs ? '••••••••' : 'Enter your ElevenLabs API key'}
-                  value={elevenLabsKey}
-                  onChange={(e) => setElevenLabsKey(e.target.value)}
-                />
-                {apiKeysPresent.elevenLabs && (
-                  <span className="text-sm text-green-500">Present in .env</span>
-                )}
-              </div>
-              <a 
-                href="https://elevenlabs.io/subscription" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-xs text-blue-500 hover:text-blue-600 mt-1 inline-block"
-              >
-                Get ElevenLabs API Key →
-              </a>
+          <div className="space-y-2">
+            <Label htmlFor="elevenlabs-key">ElevenLabs API Key</Label>
+            <div className="flex gap-2">
+              <Input
+                id="elevenlabs-key"
+                type="password"
+                value={elevenLabsKey}
+                onChange={(e) => setElevenLabsKey(e.target.value)}
+                placeholder="Enter your ElevenLabs API key"
+              />
+              <Link href="https://elevenlabs.io/subscription" target="_blank">
+                <Button variant="outline">Get Key</Button>
+              </Link>
             </div>
+          </div>
 
-            <div className="space-y-4">
-              <Label>Vosk Model</Label>
-              <div className="space-y-3">
-                {Object.entries(VOSK_MODELS).map(([modelId, model]) => {
-                  const isDownloaded = downloadedModels.includes(modelId)
-                  const isSelected = selectedModel === modelId
-                  const progress = downloadProgress[modelId]
-                  
-                  return (
-                    <div 
-                      key={modelId} 
-                      className={`flex items-center justify-between p-3 border rounded-lg ${
-                        isDownloaded ? 'bg-muted/50' : ''
-                      }`}
+          <Button onClick={handleSaveKeys} className="w-full">Save Keys</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Vosk Models</CardTitle>
+          <CardDescription>Download and manage offline voice recognition models.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {Object.entries(VOSK_MODELS).map(([modelId, model]) => {
+            const isDownloaded = downloadedModels.includes(modelId)
+            const progress = downloadProgress[modelId]
+            const isDownloading = typeof progress === 'number'
+
+            return (
+              <div key={modelId} className="p-4 border rounded-lg space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium">{model.name}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{model.description}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Size: {model.size}</p>
+                  </div>
+                  {!isDownloaded && !isDownloading && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleModelDownload(modelId)}
                     >
-                      <div className="flex-1">
-                        <div className="font-medium flex items-center gap-2">
-                          {model.name}
-                          {isDownloaded && <Check className="h-4 w-4 text-green-500" />}
-                        </div>
-                        <div className="text-sm text-muted-foreground">{model.description}</div>
-                        <div className="text-xs text-muted-foreground">Size: {model.size}</div>
-                        {progress !== undefined && (
-                          <div className="mt-2">
-                            <Progress value={progress} className="h-2" />
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Downloading: {progress}%
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {isDownloaded ? (
-                          <Button
-                            type="button"
-                            variant={isSelected ? "default" : "outline"}
-                            onClick={() => {
-                              setSelectedModel(modelId)
-                              localStorage.setItem('VOSK_MODEL', modelId)
-                            }}
-                            className="min-w-[100px]"
-                          >
-                            {isSelected ? "Selected" : "Select"}
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleModelDownload(modelId)}
-                            className="min-w-[100px]"
-                            disabled={progress !== undefined}
-                          >
-                            {progress !== undefined ? (
-                              "Downloading..."
-                            ) : (
-                              <>
-                                <Download className="h-4 w-4 mr-2" />
-                                Download
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </Button>
+                  )}
+                  {isDownloaded && (
+                    <div className="flex items-center text-green-500">
+                      <Check className="mr-2 h-4 w-4" />
+                      <span className="text-sm">Installed</span>
                     </div>
-                  )
-                })}
+                  )}
+                </div>
+                
+                {isDownloading && (
+                  <div className="space-y-2">
+                    <Progress value={progress} className="w-full" />
+                    <p className="text-sm text-center">{progress}% - Downloading...</p>
+                  </div>
+                )}
               </div>
-            </div>
-
-            <Button type="submit" className="w-full">Save Settings</Button>
-          </form>
+            )
+          })}
         </CardContent>
       </Card>
     </div>
