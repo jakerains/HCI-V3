@@ -3,11 +3,9 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import { mkdirp } from 'mkdirp'
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import * as unzipper from 'unzipper'
 import { updateProgress, completeDownload } from './progress'
 
-const execAsync = promisify(exec)
 const MODELS_DIR = path.join(process.cwd(), 'models')
 
 // URLs from https://alphacephei.com/vosk/models
@@ -21,6 +19,34 @@ export const config = {
   api: {
     responseLimit: false,
   },
+}
+
+async function extractZip(source: string, dest: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log('Extracting model...')
+    
+    // Verify the zip file exists and has content
+    const stats = fs.statSync(source)
+    console.log(`Zip file size: ${stats.size} bytes`)
+    if (stats.size === 0) {
+      reject(new Error('Downloaded zip file is empty'))
+      return
+    }
+
+    const extract = unzipper.Extract({ path: dest })
+    
+    extract.on('error', (err) => {
+      console.error('Extraction error:', err)
+      reject(err)
+    })
+
+    extract.on('close', () => {
+      console.log('Extraction complete')
+      resolve()
+    })
+
+    fs.createReadStream(source).pipe(extract)
+  })
 }
 
 export default async function handler(
@@ -74,9 +100,9 @@ export default async function handler(
       console.log('Model downloaded, extracting...')
       updateProgress(modelId, 100)
       
-      // Extract the zip file
+      // Extract the zip file using unzipper
       try {
-        await execAsync(`cd ${MODELS_DIR} && unzip -o ${modelFile}`)
+        await extractZip(modelFile, MODELS_DIR)
       } catch (error) {
         console.error('Error extracting model:', error)
         // Clean up the corrupted file
@@ -106,38 +132,6 @@ export default async function handler(
   else {
     res.setHeader('Allow', ['GET', 'POST'])
     res.status(405).end(`Method ${req.method} Not Allowed`)
-  }
-}
-
-function isModelValid(modelPath: string): boolean {
-  // Check for essential Vosk model files and directories
-  const requiredDirs = ['am', 'conf', 'graph', 'ivector']
-  const requiredFiles = [
-    path.join('am', 'final.mdl'),
-    path.join('conf', 'mfcc.conf'),
-    path.join('conf', 'model.conf'),
-    path.join('graph', 'phones', 'word_boundary.int'),
-    path.join('ivector', 'final.dubm')
-  ]
-
-  try {
-    // Check if all required directories exist
-    const hasDirs = requiredDirs.every(dir => 
-      fs.existsSync(path.join(modelPath, dir)) && 
-      fs.statSync(path.join(modelPath, dir)).isDirectory()
-    )
-
-    if (!hasDirs) return false
-
-    // Check if all required files exist
-    const hasFiles = requiredFiles.every(file => 
-      fs.existsSync(path.join(modelPath, file))
-    )
-
-    return hasFiles
-  } catch (error) {
-    console.error('Error checking model installation:', error)
-    return false
   }
 }
 
@@ -192,5 +186,23 @@ async function downloadModel(modelId: string, url: string, dest: string): Promis
       fs.unlink(dest, () => {})
       reject(new Error('Download timeout'))
     })
+  })
+}
+
+function isModelValid(modelPath: string): boolean {
+  const requiredFiles = [
+    'am/final.mdl',
+    'conf/mfcc.conf',
+    'conf/model.conf',
+    'graph/phones/word_boundary.int',
+    'ivector/final.dubm',
+  ]
+
+  return requiredFiles.every(file => {
+    const exists = fs.existsSync(path.join(modelPath, file))
+    if (!exists) {
+      console.log(`Missing required file: ${file}`)
+    }
+    return exists
   })
 } 
