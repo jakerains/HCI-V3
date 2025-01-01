@@ -5,13 +5,11 @@ import { Mic, MicOff, Volume2, VolumeX, ArrowUp, ArrowDown, Pause, Gauge, Anchor
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition'
-import { useToast } from "./ui/use-toast"
-import ShipStatus from './ShipStatus'
+import { useToast } from "@/components/ui/use-toast"
+import { ShipStatus } from './ShipStatus'
 import CommandLog from './CommandLog'
-import CompassDisplay from './CompassDisplay'
+import { CompassDisplay } from './CompassDisplay'
 import { ElevenLabsClient } from 'elevenlabs'
-import { useTheme } from '@/contexts/ThemeContext'
-import { ThemeSwitcher } from './ThemeSwitcher'
 import Link from 'next/link'
 import { commandStore } from '@/lib/commandStore'
 import { checkApiKeys } from '@/lib/api-keys'
@@ -93,7 +91,6 @@ const EXAMPLE_COMMANDS = [
 ]
 
 export default function NavalHelmInterface() {
-  const { theme } = useTheme()
   const [shipState, setShipState] = useState({
     rudder: 0,
     course: 0,
@@ -343,379 +340,178 @@ export default function NavalHelmInterface() {
   }, [])
 
   return (
-    <div className="w-full p-4 sm:p-6 rounded-lg shadow-2xl bg-[hsl(var(--app-background))]">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Naval Helm Interface</h1>
-        <div className="flex items-center gap-2">
-          <ThemeSwitcher />
-          <Link href="/settings">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="relative"
-            >
-              <Settings className="h-5 w-5" />
-              {(missingKeys.gemini || missingKeys.elevenLabs) && (
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full" />
-              )}
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {(missingKeys.gemini || missingKeys.elevenLabs) && (
-        <div className="mb-4 p-4 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg">
-          <p className="text-sm">
-            {missingKeys.gemini && missingKeys.elevenLabs ? (
-              <>Missing Gemini and ElevenLabs API keys. </>
-            ) : missingKeys.gemini ? (
-              <>Missing Gemini API key. </>
-            ) : (
-              <>Missing ElevenLabs API key. </>
-            )}
-            <Link href="/settings" className="underline">Configure in settings</Link>
-          </p>
-        </div>
-      )}
-
-      {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-        {/* Ship Status - Left Column */}
-        <div className="lg:col-span-8 grid grid-rows-[auto_1fr] gap-4 sm:gap-6">
-          <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder}`}>
-            <CardHeader className="pb-2">
-              <CardTitle className={`text-lg sm:text-xl font-semibold flex justify-between items-center ${theme.text.primary}`}>
-                <div className="flex items-center gap-2">
-                  <Ship className="h-5 w-5" />
-                  Ship Status
-                </div>
-                <div className="flex items-center gap-2">
-                  <Radio className={`h-4 w-4 ${isListening ? theme.status.listening : theme.text.muted}`} />
-                  <span className={`text-xs sm:text-sm font-normal ${isListening ? theme.status.listening : theme.status.ready} px-2 sm:px-3 py-1 rounded`}>
-                    {isListening ? 'Listening...' : 'Ready'}
-                  </span>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div className="min-w-[200px]">
-                  <ShipStatus {...shipState} />
-                </div>
-                <div className="flex flex-col space-y-4">
-                  {/* Engine Telegraph Display */}
-                  <div className={`${theme.colors.cardBackground} p-4 rounded-lg border ${theme.colors.cardBorder}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className={`text-base sm:text-lg font-semibold ${theme.text.primary}`}>Engine Telegraph</h3>
-                      {shipState.speed !== 0 && (
-                        <div className={`animate-pulse h-2 w-2 rounded-full ${theme.indicators.speed}`} />
-                      )}
-                    </div>
-                    
-                    {/* Order Section */}
-                    <div className={`mb-4 p-3 rounded bg-gray-900/50 border ${theme.colors.cardBorder}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs uppercase tracking-wider ${theme.text.muted}`}>Order:</span>
-                        {shipState.speed > 0 ? (
-                          <ArrowUp className={`h-4 w-4 ${theme.indicators.speed}`} />
-                        ) : shipState.speed < 0 ? (
-                          <ArrowDown className={`h-4 w-4 ${theme.indicators.speed}`} />
-                        ) : (
-                          <Pause className={`h-4 w-4 ${theme.text.muted}`} />
-                        )}
-                      </div>
-                      <div className={`${theme.fonts.mono} text-lg font-bold ${theme.indicators.speed}`}>
-                        {shipState.speed > 0 
-                          ? `ALL AHEAD ${getSpeedText(shipState.speed)}`
-                          : shipState.speed < 0 
-                            ? `ALL ASTERN ${getSpeedText(Math.abs(shipState.speed))}`
-                            : 'ALL STOP'}
-                      </div>
-                    </div>
-                    
-                    {/* Answering Section */}
-                    <div className={`p-3 rounded bg-gray-900/50 border ${theme.colors.cardBorder}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs uppercase tracking-wider ${theme.text.muted}`}>Answering:</span>
-                        {shipState.speed !== 0 ? (
-                          <Gauge className={`h-4 w-4 ${theme.indicators.course} ${shipState.speed !== 0 ? 'animate-spin-slow' : ''}`} />
-                        ) : (
-                          <Anchor className={`h-4 w-4 ${theme.indicators.course}`} />
-                        )}
-                      </div>
-                      <div className={`${theme.fonts.mono} text-lg font-bold ${theme.indicators.course}`}>
-                        {shipState.speed !== 0 ? 'ENGINES ANSWERING' : 'ENGINES STOPPED'}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Rudder Angle Display */}
-                  <div className={`${theme.colors.cardBackground} p-3 sm:p-4 rounded-lg border ${theme.colors.cardBorder}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Navigation2 className={`h-5 w-5 ${theme.text.primary} ${shipState.rudder !== 0 ? 'animate-pulse' : ''}`} 
-                          style={{ transform: `rotate(${shipState.rudder}deg)` }}
-                        />
-                        <h3 className={`text-base sm:text-lg font-semibold ${theme.text.primary}`}>Rudder Angle</h3>
-                      </div>
-                      {shipState.rudder !== 0 && (
-                        <span className={`text-xs font-medium ${theme.text.muted}`}>
-                          {shipState.rudder < 0 ? 'Turning Port' : 'Turning Stbd'}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-col space-y-1">
-                      {/* Angle markers */}
-                      <div className="flex justify-between px-2 text-[10px] font-mono">
-                        <span className={theme.text.muted}>35</span>
-                        <span className={theme.text.muted}>30</span>
-                        <span className={theme.text.muted}>20</span>
-                        <span className={theme.text.muted}>10</span>
-                        <span className={theme.text.muted}>|</span>
-                        <span className={theme.text.muted}>10</span>
-                        <span className={theme.text.muted}>20</span>
-                        <span className={theme.text.muted}>30</span>
-                        <span className={theme.text.muted}>35</span>
-                      </div>
-
-                      {/* Rudder bar and indicator */}
-                      <div className={`relative h-2 ${theme.compass.background} rounded-full overflow-hidden`}>
-                        {/* Background tick marks */}
-                        <div className="absolute inset-0 flex justify-between px-2">
-                          {[-35, -30, -20, -10, 0, 10, 20, 30, 35].map((angle) => (
-                            <div key={angle} className="h-full w-0.5 bg-gray-700/30" />
-                          ))}
-                        </div>
-
-                        {/* Active bar */}
-                        <div 
-                          className={`absolute top-0 bottom-0 ${theme.indicators.rudder} transition-all duration-500`}
-                          style={{
-                            left: '50%',
-                            width: `${Math.abs(shipState.rudder) / 35 * 50}%`,
-                            transform: `translateX(${shipState.rudder >= 0 ? '0' : '-100%'})`,
-                          }}
-                        />
-                        
-                        {/* Center line */}
-                        <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-500" />
-                      </div>
-
-                      {/* Port/Stbd labels */}
-                      <div className="flex justify-between px-2 text-xs">
-                        <span className={`font-medium ${theme.text.secondary}`}>PORT</span>
-                        <span className={`font-medium ${theme.text.secondary}`}>STBD</span>
-                      </div>
-
-                      {/* Current angle readout */}
-                      <div className={`text-center mt-1 ${theme.fonts.mono} text-sm ${theme.text.primary} font-medium`}>
-                        {Math.abs(shipState.rudder)}° {shipState.rudder < 0 ? 'PORT' : shipState.rudder > 0 ? 'STBD' : 'AMIDSHIPS'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+    <div className="container mx-auto px-4 py-8 space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            <CardTitle className="text-lg sm:text-xl font-semibold flex justify-between items-center text-foreground">
+              Voice Control
+              <div className="flex items-center gap-2">
+                <Radio className={`h-4 w-4 ${isListening ? 'text-green-500' : 'text-muted-foreground'}`} />
+                <span className={`text-xs sm:text-sm font-normal ${isListening ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500'} px-2 sm:px-3 py-1 rounded`}>
+                  {isListening ? 'Listening...' : 'Ready'}
+                </span>
               </div>
-            </CardContent>
-          </Card>
+            </CardTitle>
 
-          {/* Command Log */}
-          <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder}`}>
-            <CardHeader className="pb-2">
-              <CardTitle className={`text-lg sm:text-xl font-semibold ${theme.text.primary} flex justify-between items-center`}>
-                <div className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
-                  Latest Command
-                </div>
-                <Link href="/command-history">
-                  <Button variant="outline" size="sm" className={`${theme.colors.cardBorder} flex items-center gap-2`}>
-                    <Navigation2 className="h-4 w-4" />
-                    View History
-                  </Button>
-                </Link>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={`${theme.fonts.mono} text-sm`}>
-                {commandLog[0] && (
-                  <div className={`relative flex flex-col space-y-3 p-4 rounded-lg ${theme.colors.cardBackground} border ${theme.colors.cardBorder} shadow-sm`}>
-                    {/* CO Command */}
-                    <div className={`flex items-start space-x-2 pb-2 border-b ${theme.colors.cardBorder}`}>
-                      <span className={`shrink-0 inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded bg-blue-500/10 text-blue-500 dark:bg-blue-500/20 dark:text-blue-400`}>
-                        CO
-                      </span>
-                      <span className={`${theme.text.primary} break-words flex-1 font-medium`}>{commandLog[0]}</span>
-                    </div>
-                    
-                    {/* Helm Response */}
-                    <div className={`flex items-start space-x-2 pb-2 ${screenResponse ? `border-b ${theme.colors.cardBorder}` : ''}`}>
-                      <span className={`shrink-0 inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded bg-green-500/10 text-green-500 dark:bg-green-500/20 dark:text-green-400`}>
-                        HELM
-                      </span>
-                      <span className={`${theme.text.secondary} break-words flex-1`}>
-                        {commandLog[0].replace(/^helm,?\s*/i, '')}, aye aye
-                      </span>
-                    </div>
-                    
-                    {/* Status Update */}
-                    {screenResponse && (
-                      <div className="flex items-start space-x-2">
-                        <span className={`shrink-0 inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400`}>
-                          STATUS
-                        </span>
-                        <span className={`${theme.text.muted} break-words flex-1 italic`}>
-                          {screenResponse}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+            <div className="bg-card p-4 rounded-lg border border-border mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">Engine Telegraph</h3>
+                {shipState.speed !== 0 && (
+                  <div className="animate-pulse h-2 w-2 rounded-full bg-green-500" />
                 )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Right Column - Compass and Controls */}
-        <div className="lg:col-span-4 grid grid-rows-[auto_1fr] gap-4 sm:gap-6">
-          <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder}`}>
-            <CardHeader className="pb-2">
-              <CardTitle className={`text-lg sm:text-xl font-semibold ${theme.text.primary}`}>Compass</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center">
-                <div className="w-full max-w-[300px] mx-auto">
-                  <CompassDisplay course={shipState.course} />
+              <div className="mb-4 p-3 rounded bg-gray-900/50 border border-border">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Order:</span>
+                  {shipState.speed > 0 && <ArrowUp className="h-4 w-4 text-green-500" />}
+                  {shipState.speed < 0 && <ArrowDown className="h-4 w-4 text-green-500" />}
+                  {shipState.speed === 0 && <Pause className="h-4 w-4 text-muted-foreground" />}
                 </div>
-                <div className={`mt-4 ${theme.fonts.mono} text-center`}>
-                  <div className={`text-xl sm:text-2xl font-bold ${theme.text.primary}`}>
-                    {shipState.course.toFixed(1)}°
-                  </div>
-                  <div className={`text-xs sm:text-sm ${theme.text.muted}`}>
-                    {getCardinalDirection(shipState.course)}
-                  </div>
+                <div className="font-mono text-lg font-bold text-green-500">
+                  {shipState.speed > 0 ? 'AHEAD' : shipState.speed < 0 ? 'ASTERN' : 'STOP'} 
+                  {shipState.speed !== 0 && ` ${Math.abs(shipState.speed)}`}
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Controls */}
-          <Card className={`${theme.colors.cardBackground} ${theme.colors.cardBorder}`}>
-            <CardHeader className="pb-2">
-              <CardTitle className={`text-lg sm:text-xl font-semibold ${theme.text.primary}`}>Controls</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col space-y-4">
-                <Button 
-                  onClick={toggleListening}
-                  variant={isListening ? "destructive" : "default"} 
-                  size="lg"
-                  className="w-full text-sm sm:text-base"
-                >
-                  {isListening ? <MicOff className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />}
-                  {isListening ? 'Click to Stop' : 'Click to Start'}
+              <div className="p-3 rounded bg-gray-900/50 border border-border">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">Answering:</span>
+                  {shipState.speed !== 0 ? (
+                    <Gauge className={`h-4 w-4 text-yellow-500 ${shipState.speed !== 0 ? 'animate-spin-slow' : ''}`} />
+                  ) : (
+                    <Anchor className="h-4 w-4 text-yellow-500" />
+                  )}
+                </div>
+                <div className="font-mono text-lg font-bold text-yellow-500">
+                  {shipState.speed > 0 ? 'AHEAD' : shipState.speed < 0 ? 'ASTERN' : 'STOP'} 
+                  {shipState.speed !== 0 && ` ${Math.abs(shipState.speed)}`}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-card p-3 sm:p-4 rounded-lg border border-border mt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Navigation2 
+                  className={`h-5 w-5 text-foreground ${shipState.rudder !== 0 ? 'animate-pulse' : ''}`}
+                  style={{ transform: `rotate(${shipState.rudder}deg)` }}
+                />
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">Rudder Angle</h3>
+              </div>
+
+              <div className="relative">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {Math.abs(shipState.rudder)}° {shipState.rudder < 0 ? 'PORT' : shipState.rudder > 0 ? 'STARBOARD' : ''}
+                </span>
+
+                <div className="flex justify-between text-xs mt-4 mb-2 px-1">
+                  <span className="text-muted-foreground">35</span>
+                  <span className="text-muted-foreground">30</span>
+                  <span className="text-muted-foreground">20</span>
+                  <span className="text-muted-foreground">10</span>
+                  <span className="text-muted-foreground">|</span>
+                  <span className="text-muted-foreground">10</span>
+                  <span className="text-muted-foreground">20</span>
+                  <span className="text-muted-foreground">30</span>
+                  <span className="text-muted-foreground">35</span>
+                </div>
+
+                <div className="relative h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="absolute top-0 bottom-0 bg-blue-500 transition-all duration-500"
+                    style={{ 
+                      left: shipState.rudder <= 0 ? '50%' : `${50 + (shipState.rudder * 1.43)}%`,
+                      right: shipState.rudder >= 0 ? '50%' : `${50 + (Math.abs(shipState.rudder) * 1.43)}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="flex justify-between mt-2">
+                  <span className="font-medium text-muted-foreground">PORT</span>
+                  <span className="font-medium text-muted-foreground">STBD</span>
+                </div>
+
+                <div className="text-center mt-1 font-mono text-sm text-foreground font-medium">
+                  {shipState.rudder === 0 ? 'MIDSHIPS' : ''}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            <CardTitle className="text-lg sm:text-xl font-semibold text-foreground flex justify-between items-center">
+              Command Log
+              <Link href="/command-history">
+                <Button variant="outline" size="sm" className="border-border flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  History
                 </Button>
-                <Button 
-                  onClick={toggleMute} 
-                  variant="secondary" 
-                  size="lg"
-                  className={`w-full text-sm sm:text-base ${theme.colors.cardBackground} hover:opacity-80`}
-                >
-                  {isMuted ? <VolumeX className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> : <Volume2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />}
-                  {isMuted ? 'Unmute Responses' : 'Mute Responses'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              </Link>
+            </CardTitle>
 
-          {/* Voice Control Section */}
-          <div className="flex flex-col space-y-4">
-            <div className={`${theme.colors.cardBackground} p-4 rounded-lg border ${theme.colors.cardBorder}`}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Radio className={`h-5 w-5 ${isListening ? theme.status.listening : theme.text.primary}`} />
-                  <h3 className={`text-base sm:text-lg font-semibold ${theme.text.primary}`}>Voice Control</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleMute}
-                    className={`${theme.colors.cardBorder} hover:${theme.colors.cardBorder}`}
-                  >
-                    {isMuted ? (
-                      <VolumeX className={`h-4 w-4 ${theme.text.muted}`} />
-                    ) : (
-                      <Volume2 className={`h-4 w-4 ${theme.text.primary}`} />
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleListening}
-                    className={`${theme.colors.cardBorder} hover:${theme.colors.cardBorder} ${
-                      isListening ? 'bg-green-500/10' : ''
-                    }`}
-                  >
-                    {isListening ? (
-                      <Mic className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <MicOff className={`h-4 w-4 ${theme.text.muted}`} />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              
-              {/* Transcript display */}
-              {transcript && (
-                <div className={`p-3 rounded bg-gray-900/50 border ${theme.colors.cardBorder}`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs uppercase tracking-wider ${theme.text.muted}`}>Transcript:</span>
-                    <div className={`animate-pulse h-1.5 w-1.5 rounded-full ${theme.status.listening}`} />
+            <div className="font-mono text-sm mt-4">
+              {commandLog.length > 0 && (
+                <div className="relative flex flex-col space-y-3 p-4 rounded-lg bg-card border border-border shadow-sm">
+                  {/* Command */}
+                  <div className="flex items-start space-x-2 pb-2 border-b border-border">
+                    <div className="mt-1">
+                      <Radio className="h-3 w-3" />
+                    </div>
+                    <span className="text-foreground break-words flex-1 font-medium">{commandLog[0]}</span>
                   </div>
-                  <p className={`${theme.fonts.mono} ${theme.text.primary}`}>{transcript}</p>
+
+                  {/* Response */}
+                  <div className={`flex items-start space-x-2 pb-2 ${screenResponse ? 'border-b border-border' : ''}`}>
+                    <div className="mt-1">
+                      <Radio className="h-3 w-3" />
+                    </div>
+                    <span className="text-muted-foreground break-words flex-1">
+                      {processingCommand ? (
+                        <span className="animate-pulse">Processing command...</span>
+                      ) : (
+                        screenResponse || 'Awaiting response...'
+                      )}
+                    </span>
+                  </div>
+
+                  {/* Transcript */}
+                  {transcript && (
+                    <div className="flex items-start space-x-2">
+                      <div className="mt-1">
+                        <Radio className="h-3 w-3" />
+                      </div>
+                      <span className="text-muted-foreground break-words flex-1 italic">
+                        {transcript}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      </div>
+          </CardContent>
+        </Card>
 
-      {/* Version number */}
-      <div className={`text-[10px] ${theme.text.muted} text-center mt-4`}>
-        v0.3.2
-      </div>
-
-      <div className="mt-6">
-        <button
-          onClick={() => setShowExamples(!showExamples)}
-          className={`w-full flex items-center justify-between p-4 rounded-lg ${theme.colors.cardBackground} ${theme.colors.cardBorder} ${theme.text.primary}`}
-        >
-          <div className="flex items-center gap-2">
-            <HelpCircle className="h-5 w-5" />
-            <span className="font-medium">Example Commands</span>
-          </div>
-          {showExamples ? (
-            <ChevronUp className="h-5 w-5" />
-          ) : (
-            <ChevronDown className="h-5 w-5" />
-          )}
-        </button>
-        
-        {showExamples && (
-          <div className={`mt-2 p-4 rounded-lg ${theme.colors.cardBackground} ${theme.colors.cardBorder}`}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {EXAMPLE_COMMANDS.map((command, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleExampleClick(command)}
-                  className={`text-left p-3 rounded ${theme.colors.cardBorder} hover:bg-opacity-50 hover:bg-gray-500 transition-colors duration-200`}
-                >
-                  <p className={`text-sm ${theme.text.primary}`}>{command}</p>
-                </button>
-              ))}
+        <Card className="bg-card border-border">
+          <CardContent className="p-6">
+            <CardTitle className="text-lg sm:text-xl font-semibold text-foreground">Compass</CardTitle>
+            <div className="mt-4">
+              <CompassDisplay course={shipState.course} />
             </div>
-          </div>
-        )}
+            <div className="mt-4 font-mono text-center">
+              <div className="text-xl sm:text-2xl font-bold text-foreground">
+                {shipState.course}°
+              </div>
+              <div className="text-xs sm:text-sm text-muted-foreground">
+                TRUE HEADING
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <ShipStatus {...shipState} />
       </div>
     </div>
   )

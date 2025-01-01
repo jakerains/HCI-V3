@@ -3,10 +3,12 @@
   "version": "0.3.2",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"node server.js\"",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "next build && wrangler pages deploy .next --project-name hci-v3",
+    "preview": "wrangler pages dev .next --compatibility-date=2024-02-15"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
@@ -20,26 +22,22 @@
     "@radix-ui/react-toast": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "concurrently": "^8.2.2",
     "elevenlabs": "^1.50.2",
     "groq": "^3.68.3",
     "groq-sdk": "^0.9.1",
     "lucide-react": "^0.469.0",
-    "mkdirp": "^3.0.1",
     "next": "14.2.16",
+    "openai": "^4.77.0",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7",
-    "unzipper": "^0.10.14",
-    "ws": "^8.16.0"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "^1.13.7",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/unzipper": "^0.10.10",
-    "@types/ws": "^8.5.10",
     "autoprefixer": "^10.4.16",
     "eslint": "^8",
     "eslint-config-next": "14.2.16",

@@ -141,3 +141,29 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <div align="center">
 Made with ❤️ by Jake Rains
 </div>
+
+# Voice Recognition
+
+The application uses the Web Speech API for voice command recognition. This provides:
+
+- Native browser-based speech recognition
+- No external dependencies or API keys required
+- Real-time transcription with wake word detection
+- Works offline
+- Low latency response
+
+## Browser Support
+
+Voice recognition is supported in:
+- Google Chrome
+- Microsoft Edge
+- Safari
+
+For best results, use Chrome or Edge.
+
+## Voice Commands
+
+Commands start with the wake word "helm" followed by your instruction. For example:
+- "Helm rudder amidships"
+- "Helm standard ahead"
+- "Helm come to course 270"
