@@ -211,6 +211,13 @@ export function useVoskRecognition() {
               setTranscript(commandBufferRef.current)
               collectingCommandRef.current = false
               commandBufferRef.current = ''
+              
+              // Immediately check if there's another helm command in the current text
+              if (isHelmTrigger(currentText)) {
+                collectingCommandRef.current = true
+                commandBufferRef.current = currentText.replace(/\b(hell|help|held)\b/g, 'helm')
+                console.log('Started collecting follow-up command:', commandBufferRef.current)
+              }
             } else {
               // Set a timeout to finalize the command after silence
               if (silenceTimeoutRef.current) {
@@ -222,6 +229,13 @@ export function useVoskRecognition() {
                   setTranscript(commandBufferRef.current)
                   collectingCommandRef.current = false
                   commandBufferRef.current = ''
+                  
+                  // Check for follow-up helm command after silence timeout
+                  if (isHelmTrigger(currentText)) {
+                    collectingCommandRef.current = true
+                    commandBufferRef.current = currentText.replace(/\b(hell|help|held)\b/g, 'helm')
+                    console.log('Started collecting follow-up command after silence:', commandBufferRef.current)
+                  }
                 }
               }, 1000) // Wait 1 second of silence before finalizing
             }

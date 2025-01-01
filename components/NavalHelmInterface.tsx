@@ -15,6 +15,13 @@ import { ThemeSwitcher } from './ThemeSwitcher'
 import Link from 'next/link'
 import { commandStore } from '@/lib/commandStore'
 import { checkApiKeys } from '@/lib/api-keys'
+import { config } from '@/lib/config'
+
+declare global {
+  interface Window {
+    webkitAudioContext: typeof AudioContext
+  }
+}
 
 // Naval command patterns and configurations
 const NAVAL_PATTERNS = {
@@ -71,10 +78,6 @@ const NAVAL_PATTERNS = {
   }
 }
 
-const ELEVENLABS_API_KEY = process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY
-const ELEVENLABS_VOICE_ID = process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID
-const ELEVENLABS_MODEL_ID = process.env.NEXT_PUBLIC_ELEVENLABS_MODEL_ID
-
 // Add this constant with the example commands
 const EXAMPLE_COMMANDS = [
   "Helm, right 15 degrees rudder, steady on course zero niner zero",
@@ -129,83 +132,103 @@ export default function NavalHelmInterface() {
     return () => window.removeEventListener('storage', checkKeys)
   }, [])
 
-  const playAudioResponse = async (text: string) => {
-    if (isMuted) return
-    
+  useEffect(() => {
+    // Update body background color based on theme
+    document.body.style.backgroundColor = theme.name === "Naval Dark" ? "hsl(300,0%,9%)" : "white";
+  }, [theme.name]);
+
+  const playAudioResponse = useCallback(async (text: string) => {
+    if (isMuted) return true
+
     try {
-      if (ELEVENLABS_API_KEY && ELEVENLABS_VOICE_ID) {
-        console.log('Using ElevenLabs with voice ID:', ELEVENLABS_VOICE_ID)
-        console.log('Using ElevenLabs model:', ELEVENLABS_MODEL_ID)
+      // Use ElevenLabs if API key is available
+      if (config.elevenlabs.apiKey) {
+        console.log('Using ElevenLabs with voice ID:', config.elevenlabs.voiceId);
+        console.log('Using ElevenLabs model:', config.elevenlabs.modelId);
         
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.NEXT_PUBLIC_ELEVENLABS_VOICE_ID}`, {
+        // Create an audio context first
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${config.elevenlabs.voiceId}`, {
           method: 'POST',
           headers: {
             'Accept': 'audio/mpeg',
-            'xi-api-key': ELEVENLABS_API_KEY,
+            'xi-api-key': config.elevenlabs.apiKey,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             text: text,
-            model_id: process.env.NEXT_PUBLIC_ELEVENLABS_MODEL_ID || 'eleven_flash_v2_5'
+            model_id: config.elevenlabs.modelId
           }),
-        })
+        });
 
         if (!response.ok) {
-          throw new Error(`ElevenLabs API error: ${response.status}`)
+          throw new Error(`ElevenLabs API error: ${response.status}`);
         }
 
-        const audioBlob = await response.blob()
-        const audioUrl = URL.createObjectURL(audioBlob)
-        const audio = new Audio(audioUrl)
+        const audioBlob = await response.blob();
+        const audioBuffer = await audioBlob.arrayBuffer();
+        const audioSource = audioContext.createBufferSource();
+        
+        // Convert array buffer to audio buffer
+        const decodedBuffer = await audioContext.decodeAudioData(audioBuffer);
+        audioSource.buffer = decodedBuffer;
+        audioSource.connect(audioContext.destination);
         
         return new Promise((resolve, reject) => {
-          audio.onended = () => {
-            URL.revokeObjectURL(audioUrl)
-            resolve(true)
-          }
-          audio.onerror = reject
-          audio.play().catch(reject)
-        })
+          audioSource.addEventListener('ended', () => resolve(true));
+          // Resume the audio context before playing
+          audioContext.resume().then(() => {
+            audioSource.start(0);
+          }).catch(reject);
+        });
       } else {
         // Fallback to browser speech synthesis with improved settings
         return new Promise((resolve) => {
-          const utterance = new SpeechSynthesisUtterance(text)
-          utterance.rate = 0.95  // Slightly slower
-          utterance.pitch = 1.1  // Slightly higher pitch
-          utterance.volume = 1.0
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.rate = 0.95;  // Slightly slower
+          utterance.pitch = 1.1;  // Slightly higher pitch
+          utterance.volume = 1.0;
           
           // Try to use a more natural voice if available
-          const voices = window.speechSynthesis.getVoices()
+          const voices = window.speechSynthesis.getVoices();
           const preferredVoice = voices.find(voice => 
             voice.name.includes('Daniel') || 
             voice.name.includes('Premium') ||
             voice.name.includes('Natural')
-          )
+          );
           if (preferredVoice) {
-            utterance.voice = preferredVoice
+            utterance.voice = preferredVoice;
           }
           
-          utterance.onend = () => resolve(true)
-          window.speechSynthesis.speak(utterance)
-        })
+          utterance.onend = () => resolve(true);
+          window.speechSynthesis.speak(utterance);
+        });
       }
     } catch (error) {
-      console.error('Audio playback error:', error)
+      console.error('Audio playback error:', error);
       toast({
         title: "Audio Error",
         description: "Failed to play audio response",
         variant: "destructive",
-      })
-      return Promise.reject(error)
+      });
+      return Promise.reject(error);
     }
-  }
+  }, [isMuted, toast])
 
-  const processCommand = useCallback(async (command: string) => {
+  // Effect to handle transcript updates
+  useEffect(() => {
+    if (transcript && !processingCommand) {
+      handleCommand(transcript)
+    }
+  }, [transcript])
+
+  const handleCommand = useCallback(async (command: string) => {
     if (processingCommand) return
     
     setProcessingCommand(true)
     try {
-      console.log('Raw command:', command)
+      console.log('Processing transcript:', command)
       
       // Send command to LLM endpoint
       const response = await fetch('/api/process-command', {
@@ -232,57 +255,67 @@ export default function NavalHelmInterface() {
       // Use the corrected command in the UI
       const correctedCommand = result.correctedCommand || command
       setLastCommand(correctedCommand)
-      setCommandLog(prev => [correctedCommand, ...prev].slice(0, 5))
+      
+      // Add to command log
+      setCommandLog(prev => [...prev, correctedCommand])
+      
+      // Store in command history with response
+      const helmResponse = `${correctedCommand.replace(/^helm,?\s*/i, '')}, aye aye`
+      commandStore.addCommand(correctedCommand, helmResponse, result.statusReport || '')
 
       // Update ship state with LLM-provided updates
-      const newShipState = { ...shipState }
       if (result.stateUpdates) {
+        const newShipState = { ...shipState }
+        
+        // Log the current state and updates
+        console.log('Current ship state:', shipState)
+        console.log('State updates received:', result.stateUpdates)
+        
         if (result.stateUpdates.rudder !== null) {
           newShipState.rudder = result.stateUpdates.rudder
         }
         if (result.stateUpdates.course !== null) {
-          newShipState.course = result.stateUpdates.course
+          console.log('NavalHelmInterface - Updating course from:', shipState.course, 'to:', result.stateUpdates.course)
+          newShipState.course = Number(result.stateUpdates.course)
         }
         if (result.stateUpdates.speed !== null) {
           newShipState.speed = result.stateUpdates.speed
         }
+        
+        console.log('NavalHelmInterface - Setting new ship state:', newShipState)
         setShipState(newShipState)
       }
 
-      setScreenResponse(result.statusReport)
-      
-      // Store command in history
-      const helmResponse = `${correctedCommand.replace(/^helm,?\s*/i, '')}, aye aye`
-      commandStore.addCommand(correctedCommand, helmResponse, result.statusReport)
-      
+      // Set screen response
+      setScreenResponse(result.statusReport || '')
+
+      // Reset processing state before playing audio
+      setProcessingCommand(false)
+      setTranscript('') // Clear the transcript after processing
+
       // Play audio response
-      console.log('Sending to ElevenLabs:', helmResponse)
-      await playAudioResponse(helmResponse)
+      if (result.statusReport) {
+        await playAudioResponse(helmResponse)
+      }
 
     } catch (error) {
-      console.error('Command processing error:', error)
+      console.error('Error processing command:', error)
       toast({
         title: "Command Error",
         description: error instanceof Error ? error.message : "Failed to process command",
         variant: "destructive",
       })
-    } finally {
+      // Make sure to reset processing state on error
       setProcessingCommand(false)
-    }
-  }, [playAudioResponse, shipState, toast])
-
-  // Handle transcript updates
-  useEffect(() => {
-    if (!transcript || processingCommand) return
-    
-    const processTranscript = async () => {
-      console.log('Processing transcript:', transcript)
-      await processCommand(transcript)
       setTranscript('')
     }
+  }, [shipState, playAudioResponse, toast, setTranscript])
 
-    processTranscript()
-  }, [transcript, processCommand, setTranscript])
+  const handleExampleClick = useCallback((example: string) => {
+    if (!processingCommand) {
+      handleCommand(example)
+    }
+  }, [handleCommand, processingCommand])
 
   // Handle errors
   useEffect(() => {
@@ -309,7 +342,7 @@ export default function NavalHelmInterface() {
   }, [])
 
   return (
-    <div className={`w-full max-w-6xl mx-6 my-6 p-4 sm:p-6 ${theme.name === "Naval Dark" ? "bg-[hsl(222,23%,10%)]" : "bg-[hsl(300,0%,88%)]"} ${theme.text.primary} rounded-lg shadow-2xl relative`}>
+    <div className="w-full p-4 sm:p-6 bg-[hsl(0,0%,12%)] rounded-lg shadow-2xl relative">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Naval Helm Interface</h1>
         <div className="flex items-center gap-2">
@@ -675,7 +708,7 @@ export default function NavalHelmInterface() {
               {EXAMPLE_COMMANDS.map((command, index) => (
                 <button
                   key={index}
-                  onClick={() => processCommand(command)}
+                  onClick={() => handleExampleClick(command)}
                   className={`text-left p-3 rounded ${theme.colors.cardBorder} hover:bg-opacity-50 hover:bg-gray-500 transition-colors duration-200`}
                 >
                   <p className={`text-sm ${theme.text.primary}`}>{command}</p>

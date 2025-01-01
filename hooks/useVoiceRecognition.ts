@@ -15,6 +15,7 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
   const [error, setError] = useState<string | null>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const processingRef = useRef(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -34,6 +35,7 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
         console.log('Voice recognition started')
         setIsListening(true)
         setError(null)
+        processingRef.current = false
       }
 
       recognitionInstance.onerror = (event) => {
@@ -44,8 +46,6 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
         }
       }
 
-      let finalTranscriptTimeout: NodeJS.Timeout | null = null
-
       recognitionInstance.onresult = (event) => {
         const current = event.resultIndex
         const transcript = event.results[current][0].transcript.trim()
@@ -54,18 +54,20 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
           clearTimeout(timeoutRef.current)
         }
 
-        if (finalTranscriptTimeout) {
-          clearTimeout(finalTranscriptTimeout)
-        }
-
         console.log('Transcript:', transcript)
         
         if (event.results[current].isFinal) {
           console.log('Final transcript:', transcript)
-          finalTranscriptTimeout = setTimeout(() => {
-            setTranscript(transcript)
-            finalTranscriptTimeout = null
-          }, 1000) // Wait for any final adjustments
+          
+          // Process any command that starts with "helm" or "Helm"
+          if (transcript.toLowerCase().startsWith('helm') && !processingRef.current) {
+            processingRef.current = true
+            
+            timeoutRef.current = setTimeout(() => {
+              setTranscript(transcript)
+              processingRef.current = false
+            }, 500)
+          }
         }
       }
 
@@ -75,6 +77,7 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current)
         }
+        processingRef.current = false
       }
 
       recognitionRef.current = recognitionInstance
@@ -90,6 +93,7 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
             console.error('Error stopping recognition on cleanup:', err)
           }
         }
+        processingRef.current = false
       }
     }
   }, [])
@@ -97,6 +101,7 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
   const startListening = useCallback(() => {
     if (recognitionRef.current) {
       try {
+        processingRef.current = false
         recognitionRef.current.start()
       } catch (err) {
         console.error('Error starting recognition:', err)
@@ -112,6 +117,7 @@ export function useVoiceRecognition(): VoiceRecognitionHook {
           clearTimeout(timeoutRef.current)
         }
         recognitionRef.current.stop()
+        processingRef.current = false
       } catch (err) {
         console.error('Error stopping recognition:', err)
       }

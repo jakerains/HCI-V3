@@ -10,6 +10,7 @@ interface CompassDisplayProps {
 export default function CompassDisplay({ course = 0 }: CompassDisplayProps) {
   const { theme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [displayCourse, setDisplayCourse] = useState(course)
   
   // Cardinal and ordinal directions
   const directions = [
@@ -26,16 +27,28 @@ export default function CompassDisplay({ course = 0 }: CompassDisplayProps) {
   // Generate tick marks for every 5 degrees
   const ticks = Array.from({ length: 72 }, (_, i) => i * 5)
 
-  // Normalize course to 0-360 range
-  const normalizedCourse = ((course % 360) + 360) % 360
+  // Update displayCourse when course prop changes
+  useEffect(() => {
+    if (mounted) {
+      console.log('CompassDisplay - Course prop updated:', course)
+      console.log('CompassDisplay - Setting displayCourse to:', course)
+      setDisplayCourse(Number(course))
+    }
+  }, [course, mounted])
 
+  // Handle initial mount
   useEffect(() => {
     setMounted(true)
+    setDisplayCourse(Number(course))
   }, [])
 
   if (!mounted) {
-    return null // Prevent hydration mismatch by not rendering anything on server
+    return null
   }
+
+  // Normalize course to 0-360 range
+  const normalizedCourse = ((Number(displayCourse) % 360) + 360) % 360
+  console.log('CompassDisplay - Normalized course:', normalizedCourse)
 
   return (
     <div className="relative w-full aspect-square max-w-[240px] mx-auto">
@@ -99,17 +112,20 @@ export default function CompassDisplay({ course = 0 }: CompassDisplayProps) {
 
         {/* Rotating compass card */}
         <div
-          className="absolute inset-6 transition-transform duration-500 ease-out"
-          style={{ transform: mounted ? `rotate(-${normalizedCourse}deg)` : 'rotate(0deg)' }}
+          className="absolute inset-6 transition-transform duration-300 ease-out"
+          style={{ transform: `rotate(${normalizedCourse}deg)` }}
         >
           {/* Compass card with degree markings */}
           <div className="absolute inset-0 rounded-full">
             {/* North pointer with bar */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-full">
+              <div 
+                className="relative w-full"
+                style={{ transform: `rotate(-90deg)` }}
+              >
                 {/* Horizontal bar */}
                 <div className="relative h-[2px] bg-gradient-to-r from-amber-500/20 via-amber-500/80 to-amber-500/20">
-                  {/* North triangle - positioned at end of bar and rotated */}
+                  {/* North triangle - positioned at end of bar */}
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 rotate-90">
                     <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-b-[14px] border-l-transparent border-r-transparent border-b-amber-500/80" />
                   </div>
@@ -127,7 +143,7 @@ export default function CompassDisplay({ course = 0 }: CompassDisplayProps) {
         {/* Digital readout */}
         <div className={`absolute left-1/2 -translate-x-1/2 bottom-6 ${theme.colors.cardBackground} px-2 py-0.5 rounded border ${theme.colors.cardBorder} shadow-lg backdrop-blur-sm`}>
           <span className={`text-base font-mono font-bold ${theme.text.primary}`}>
-            {normalizedCourse.toFixed(1)}°
+            {normalizedCourse.toFixed(0)}°
           </span>
         </div>
       </div>
