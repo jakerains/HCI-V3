@@ -1,84 +1,143 @@
-# HCI-V3
+# HCI-V3 - Naval Helm Interface
 
-A naval helm interface with voice command capabilities and real-time status updates. This application simulates a naval helm control system with voice commands, providing real-time visual feedback through a compass display, engine telegraph, and rudder angle indicator.
+<div align="center">
 
-## Features
+<img src="./public/logo.png" alt="HCI-V3 Logo" width="200" height="auto" />
 
-- Voice command recognition using Vosk (offline capable)
-- Natural language processing with Google Gemini AI
-- Text-to-speech responses via ElevenLabs
-- Real-time compass display with course tracking
-- Engine telegraph status with speed control
-- Rudder angle visualization
-- Command history logging
-- Dark/Light theme support
-- Offline-capable voice recognition
+[![Next.js](https://img.shields.io/badge/Next.js-13.5-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.0-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 
-## Prerequisites
+**A modern naval helm interface with voice command capabilities and real-time status updates.**
 
-- Node.js 18+ 
-- Google Gemini API key (for command processing)
-- ElevenLabs API key (for voice responses)
+[Features](#features) • [Demo](#demo) • [Installation](#installation) • [Usage](#usage) • [Documentation](#documentation)
 
-## Setup
+<img src="./public/preview.jpg" alt="Interface Preview" width="800" height="auto" style="border-radius: 8px; margin: 20px 0;" />
 
-1. Clone the repository:
-```bash
-git clone https://github.com/jakerains/HCI-V3.git
-cd HCI-V3
+</div>
+
+## 🚀 Features
+
+### Core Capabilities
+- 🎙️ **Voice Command Recognition** - Offline-capable using Vosk
+- 🧠 **AI-Powered Processing** - Natural language understanding with Google Gemini
+- 🔊 **Voice Responses** - Natural speech synthesis via ElevenLabs
+- 🎯 **Real-time Visualization**
+  - Dynamic compass display with course tracking
+  - Interactive engine telegraph
+  - Precise rudder angle indicator
+  - Command history logging
+
+### Technical Features
+- 🌓 Dark/Light theme support with modern UI
+- 💻 Cross-platform compatibility (Windows, macOS)
+- 🌐 Browser support (Chrome, Safari, Edge)
+- ⚡ Offline-capable voice recognition
+- 🔒 Secure API key management
+
+## 🎮 Demo
+
+### Voice Commands
+The system understands natural language helm commands:
+```
+"Helm, right 15 degrees rudder, steady on course zero niner zero"
+"Helm, all ahead two-thirds, come left to heading one eight zero"
+"Helm, rudder amidships, all ahead full, steady as she goes"
 ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+## 🛠️ Installation
 
-3. Create a `.env.local` file with your API keys:
-```
-NEXT_PUBLIC_ELEVENLABS_API_KEY=your_key_here
-NEXT_PUBLIC_ELEVENLABS_VOICE_ID=your_voice_id_here
-NEXT_PUBLIC_ELEVENLABS_MODEL_ID=eleven_flash_v2
-NEXT_PUBLIC_GEMINI_API_KEY=your_key_here
-```
+### Prerequisites
+- Node.js 18+
+- Google Gemini API key
+- ElevenLabs API key
 
-4. Start the development server:
-```bash
-npm run dev
-```
+### Quick Start
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/jakerains/HCI-V3.git
+   cd HCI-V3
+   ```
 
-The application will start on http://localhost:3000. The Vosk speech recognition model (small English model, ~40MB) will be automatically downloaded and set up on first run if not present.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-## Voice Commands
+3. **Configure API Keys**
+   
+   Choose one of these options:
 
-The system responds to naval helm commands in natural language. Example commands:
-- "Helm, right 15 degrees rudder, steady on course zero niner zero"
-- "Helm, all ahead two-thirds, come left to heading one eight zero"
-- "Helm, rudder amidships, all ahead full, steady as she goes"
-- "Helm, left standard rudder, reduce speed to one-third"
+   **Option A: Using `.env.local`**
+   ```env
+   NEXT_PUBLIC_GEMINI_API_KEY=your_key_here
+   NEXT_PUBLIC_ELEVENLABS_API_KEY=your_key_here
+   ```
 
-## Development
+   **Option B: Using Settings Page**
+   - Launch the application
+   - Navigate to Settings
+   - Enter your API keys
+   - Click "Save Keys"
 
-The project runs two servers concurrently:
-- Next.js frontend on default port (3000)
-- WebSocket server for voice recognition on port 2700
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+   Access the application at http://localhost:3000
+
+## 🎯 Voice Recognition Models
+
+Choose from multiple Vosk models based on your needs:
+
+| Model | Size | Performance | Use Case |
+|-------|------|-------------|-----------|
+| Small (English) | ~40MB | Fastest | Basic commands |
+| Medium (English) | ~1.8GB | Balanced | General use |
+| Large (English) | ~2.3GB | Best accuracy | Clear speech |
+
+Models can be downloaded and managed through the Settings page.
+
+## 🏗️ Architecture
+
+The application runs on two concurrent servers:
+- Next.js frontend (Port 3000)
+- WebSocket server for voice recognition (Port 2700)
 
 ### Project Structure
-- `/components` - React components including the main helm interface
-- `/pages` - Next.js pages and API routes
-- `/lib` - Utility functions and configuration
-- `/hooks` - Custom React hooks for voice recognition and audio
-- `/public` - Static assets and Vosk model files
+```
+HCI-V3/
+├── components/     # React components
+├── pages/         # Next.js pages & API routes
+├── lib/           # Utilities & configuration
+├── hooks/         # Custom React hooks
+└── public/        # Static assets & models
+```
 
-## Getting API Keys
+## 🔑 API Keys
 
-1. Google Gemini API Key:
-   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Create a new API key
+### Google Gemini API
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create a new API key
+3. Use in application
 
-2. ElevenLabs API Key:
-   - Visit [ElevenLabs](https://elevenlabs.io/subscription)
-   - Sign up for an account and get your API key
+### ElevenLabs API
+1. Visit [ElevenLabs](https://elevenlabs.io/subscription)
+2. Create an account
+3. Get your API key
+4. Use in application
 
-## License
+## 🤝 Contributing
 
-MIT
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+Made with ❤️ by Jake Rains
+</div>
