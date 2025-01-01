@@ -683,7 +683,7 @@ export default function NavalHelmInterface() {
 
       {/* Version number */}
       <div className={`text-[10px] ${theme.text.muted} text-center mt-4`}>
-        v0.3.0
+        v0.3.2
       </div>
 
       <div className="mt-6">
