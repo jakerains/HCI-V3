@@ -32,7 +32,6 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "unzipper": "^0.10.14",
-    "vosk": "^0.3.39",
     "ws": "^8.16.0"
   },
   "devDependencies": {
