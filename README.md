@@ -1,4 +1,4 @@
-# Navy Whisper
+# HCI-V3
 
 A naval helm interface with voice command capabilities and real-time status updates. This application simulates a naval helm control system with voice commands, providing real-time visual feedback through a compass display, engine telegraph, and rudder angle indicator.
 
@@ -24,8 +24,8 @@ A naval helm interface with voice command capabilities and real-time status upda
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd hci-v2
+git clone https://github.com/jakerains/HCI-V3.git
+cd HCI-V3
 ```
 
 2. Install dependencies:
