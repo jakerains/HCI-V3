@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import { cookies } from 'next/headers'
 
+export const runtime = 'edge'
+
 // Naval command patterns and configurations
 const NAVAL_PATTERNS = {
   RUDDER: {

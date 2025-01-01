@@ -7,10 +7,4 @@ command = "npm run build"
 output_dir = ".next"
 
 [site]
-bucket = ".next"
-
-[env.production]
-name = "hci-v3-production"
-
-[env.preview]
-name = "hci-v3-preview" 
+bucket = ".next" 

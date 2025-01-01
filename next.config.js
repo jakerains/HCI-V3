@@ -9,7 +9,7 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['localhost:3000', '*.pages.dev'],
     },
-  },
+  }
 }
 
 module.exports = nextConfig 

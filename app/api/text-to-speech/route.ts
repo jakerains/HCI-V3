@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { config } from '@/lib/config'
 
+export const runtime = 'edge'
+
 export async function POST(request: Request) {
   const { text } = await request.json()
   
